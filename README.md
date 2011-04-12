@@ -80,7 +80,7 @@ Output:
 
     SELECT * FROM user WHERE id < 10 OR id > 20
 
-### Where LIKE Queries
+### LIKE Queries
 
 To build a LIKE query you can use the special `%` operator.
 
@@ -98,10 +98,10 @@ Output:
 
     SELECT * FROM user WHERE name NOT LIKE '%bob%'
 
-### Where IN Queries
+### IN Queries
 
 To use an IN statement in your where condition, user the special '@' operator
-and pass in and array of values.
+and pass in an array of values.
 
     echo $db->using('user')->where('id @', array(10, 20, 30))->select();
 
@@ -244,11 +244,11 @@ The supported protocols are `mysql`, `mysqli`, `sqlite`, and `sqlite3`.
 
 To fetch multiple records, use the `fetch` function.
 
-    $db->using('user')->where('id >', 100)->fetch();
+    $rows = $db->using('user')->where('id >', 100)->fetch();
 
 To fetch a single record, user the `fetchRow` function.
 
-    $db->using('user')->where('id', 123)->fetchRow();
+    $row = $db->using('user')->where('id', 123)->fetchRow();
 
 To fetch the value of a column, use the `fetchColumn` function and passing the name of the column.
 
@@ -256,7 +256,7 @@ To fetch the value of a column, use the `fetchColumn` function and passing the n
 
 ### Non-queries
 
-For non-queries like update, insert and delete, you use the `execute` function.
+For non-queries like update, insert and delete, use the `execute` function.
 
     $sql = $db->using('user')->where('id', 123)->delete();
 
@@ -286,7 +286,7 @@ To get the sum value from a table.
 
 ### Statistics
 
-Sparrow has built in query statistics tracking. To enable it, just set the property.
+Sparrow has built in query statistics tracking. To enable it, just set the `stats_enabled` property.
 
     $db->stats_enabled = true;
 
@@ -296,3 +296,7 @@ After running your queries, get the stats array:
 
 The stats array contains the total time for all queries, an array of all queries executed
 with individual query times.
+
+## License
+
+Sparrow is released under the [MIT](http://www.opensource.org/licenses/mit-license.php) license.
