@@ -14,17 +14,29 @@ Sparrow is a simple SQL builder and database abstraction layer.
     $db->using('user')
 
     // Build a select query
-    echo $db->select();
+    $db->select();
+
+    // Display the SQL
+    echo $db->sql();
 
 Output:
 
     SELECT * FROM user
 
+### Method Chaining
+
+Sparrow allows you to chain methods together, so you can instead do:
+
+    echo $db->using('user')->select()->sql();
+
 ### Where Conditions
 
 To add where conditions to your query, use the `where` function.
 
-    echo $db->using('user')->where('id', 123)->select();
+    echo $db->using('user')
+        ->where('id', 123)
+        ->select()
+        ->sql();
 
 Output:
 
@@ -35,7 +47,8 @@ You can call where multiple times to add multiple conditions.
     echo $db->using('user')
         ->where('id', 123)
         ->where('name', 'bob')
-        ->select();
+        ->select()
+        ->sql();
 
 Output:
 
@@ -45,11 +58,17 @@ You can also pass an array to the where function. The following would produce th
 
     $where = array('id' => 123, 'name' => 'bob');
 
-    echo $db->using('user')->where($where)->select();
+    echo $db->using('user')
+        ->where($where)
+        ->select()
+        ->sql();
 
 You can even pass in a string literal.
 
-    echo $db->using('user')->where('id = 99')->select();
+    echo $db->using('user')
+        ->where('id = 99')
+        ->select()
+        ->sql();
 
 Output:
 
@@ -60,7 +79,10 @@ Output:
 The default operator for where queries is `=`. You can use different operators by placing
 them after the field declaration.
 
-    echo $db->using('user')->where('id >', 123)->select();
+    echo $db->using('user')
+        ->where('id >', 123)
+        ->select()
+        ->sql();
 
 Output:
 
@@ -74,7 +96,8 @@ place a `|` delimiter before the field name.
     echo $db->using('user')
         ->where('id <', 10)
         ->where('|id >', 20)
-        ->select();
+        ->select()
+        ->sql();
 
 Output:
 
@@ -84,7 +107,10 @@ Output:
 
 To build a LIKE query you can use the special `%` operator.
 
-    echo $db->using('user')->where('name %', '%bob%')->select();
+    echo $db->using('user')
+        ->where('name %', '%bob%')
+        ->select()
+        ->sql();
 
 Output:
 
@@ -92,7 +118,10 @@ Output:
 
 To build a NOT LIKE query, add a `!` before the `%` operator.
 
-    echo $db->using('user')->where('name !%', '%bob%')->select();
+    echo $db->using('user')
+        ->where('name !%', '%bob%')
+        ->select()
+        ->sql();
 
 Output:
 
@@ -103,7 +132,10 @@ Output:
 To use an IN statement in your where condition, user the special '@' operator
 and pass in an array of values.
 
-    echo $db->using('user')->where('id @', array(10, 20, 30))->select();
+    echo $db->using('user')
+        ->where('id @', array(10, 20, 30))
+        ->select()
+        ->sql();
 
 Output:
 
@@ -111,7 +143,10 @@ Output:
 
 To build a NOT IN query, add a `!` before the `@` operator.
 
-    echo $db->using('user')->where('id !@', array(10, 20, 30))->select();
+    echo $db->using('user')
+        ->where('id !@', array(10, 20, 30))
+        ->select()
+        ->sql();
 
 Output:
 
@@ -121,7 +156,9 @@ Output:
 
 To select specific fields, pass an array in to the `select` function.
 
-    echo $db->using('user')->select(array('id','name'));
+    echo $db->using('user')
+        ->select(array('id','name'))
+        ->sql();
 
 Output:
 
@@ -129,19 +166,36 @@ Output:
 
 ### Limit and Offset
 
-To add a limit or offset to a query, pass in additional parameters to the `select` function.
+To add a limit or offset to a query, you can user the `limit` and `offset` functions.
 
-    echo $db->using('user')->select('*', 10, 20);
+    echo $db->using('user')
+        ->limit(10)
+        ->offset(20)
+        ->select()
+        ->sql();
 
 Output:
 
     SELECT * FROM user LIMIT 10 OFFSET 20
 
+You can also pass in additional parameters to the `select` function.
+
+    echo $db->using('user')
+        ->select('*', 50, 10)
+        ->sql();
+
+Output:
+
+    SELECT * FROM user LIMIT 50 OFFSET 10
+
 ### Distinct
 
 To add a DISTINCT keyword to your query, call the `distinct` function.
 
-    echo $db->using('user')->distinct()->select('name');
+    echo $db->using('user')
+        ->distinct()
+        ->select('name')
+        ->sql();
 
 Output:
 
@@ -153,7 +207,8 @@ To add a table join, use the `join` function and pass in an array of fields to j
 
     echo $db->using('user')
         ->join('role', array('role.id' => 'user.id'))
-        ->select();
+        ->select()
+        ->sql();
 
 Output:
 
@@ -165,7 +220,8 @@ The join array works just like where conditions.
 
     echo $db->using('user')
         ->join('role', array('role.id' => 'user.id', 'role.id >' => 10))
-        ->select();
+        ->select()
+        ->sql();
 
 Output:
 
@@ -175,7 +231,10 @@ Output:
 
 To add sorting to a query, user the `sortAsc` and `sortDesc` functions.
 
-    echo $db->using('user')->sortDesc('id')->select();
+    echo $db->using('user')
+        ->sortDesc('id')
+        ->select()
+        ->sql();
 
 Output:
 
@@ -185,7 +244,10 @@ Output:
 
 To add a field to group by, use the `groupBy` function.
 
-    echo $db->using('id')->groupBy('points')->select(array('id','count(*)'));
+    echo $db->using('id')
+        ->groupBy('points')
+        ->select(array('id','count(*)'))
+        ->sql();
 
 Output:
 
@@ -197,7 +259,9 @@ To build an insert query, pass in an array of data to the `insert` function.
 
     $data = array('id' => 123, 'name' => 'bob');
 
-    echo $db->using('user')->insert($data);
+    echo $db->using('user')
+        ->insert($data)
+        ->sql();
 
 Output:
 
@@ -212,7 +276,8 @@ To build an update query, pass in an array of data to the `update` function.
 
     echo $db->using('user')
         ->where($where)
-        ->update($data);
+        ->update($data)
+        ->sql();
 
 Output:
 
@@ -222,7 +287,10 @@ Output:
 
 To build a delete query, use the `delete` function.
 
-    echo $db->using('user')->where('id', 123)->delete();
+    echo $db->using('user')
+        ->where('id', 123)
+        ->delete()
+        ->sql();
 
 Output:
 
@@ -230,9 +298,10 @@ Output:
 
 ## Executing Queries
 
-Sparrow can also execute the queries it builds. Just declare a connection string:
+Sparrow can also execute the queries it builds.
+You just need to pass in a connection string to the class constructor:
 
-    $db = new Sparrow('mysql://user:pass@localhost/dbname');
+    $db = new Sparrow('mysql://admin:pasSW0rd@localhost/mydb');
 
 The connection string uses the following format:
 
@@ -244,23 +313,42 @@ The supported protocols are `mysql`, `mysqli`, `sqlite`, and `sqlite3`.
 
 To fetch multiple records, use the `fetch` function.
 
-    $rows = $db->using('user')->where('id >', 100)->fetch();
+    $rows = $db->using('user')
+        ->where('id >', 100)
+        ->fetch();
 
 To fetch a single record, user the `fetchRow` function.
 
-    $row = $db->using('user')->where('id', 123)->fetchRow();
+    $row = $db->using('user')
+        ->where('id', 123)
+        ->fetchRow();
 
 To fetch the value of a column, use the `fetchColumn` function and passing the name of the column.
 
-    $username = $db->using('user')->where('id', 123)->fetchColumn('username');
+    $username = $db->using('user')
+        ->where('id', 123)
+        ->fetchColumn('username');
+
+All the fetch functions automatically perform a select, so you don't need to call the `select` function
+unless you want to specify the fields the return.
+
+    $row = $db->using('user')
+        ->where('id', 123)
+        ->select(array('id', 'name'))
+        ->fetchRow();
 
 ### Non-queries
 
-For non-queries like update, insert and delete, use the `execute` function.
+For non-queries like update, insert and delete, use the `execute` function after building your query.
 
-    $sql = $db->using('user')->where('id', 123)->delete();
+    $sql = $db->using('user')
+        ->where('id', 123)
+        ->delete()
+        ->execute();
 
-    $db->execute($sql);
+Executes:
+
+    DELETE FROM user WHERE id = 123
 
 ### Helper Methods
 
@@ -294,7 +382,7 @@ After running your queries, get the stats array:
 
     $stats = $db->getStats();
 
-The stats array contains the total time for all queries, an array of all queries executed
+The stats array contains the total time for all queries and an array of all queries executed
 with individual query times.
 
 ## License

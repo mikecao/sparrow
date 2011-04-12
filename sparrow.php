@@ -7,7 +7,6 @@
  * @version 0.1
  */
 class Sparrow {
-    protected $db;
     protected $table;
     protected $where;
     protected $joins;
@@ -15,10 +14,15 @@ class Sparrow {
     protected $group;
     protected $having;
     protected $distinct;
+    protected $limit;
+    protected $offset;
+    protected $sql;
+
+    protected $db;
     protected $stats;
     protected $query_time;
 
-    public $sql;
+    public $last_query;
     public $num_rows;
     public $insert_id;
     public $affected_rows;
@@ -72,6 +76,9 @@ class Sparrow {
         $this->group = array();
         $this->having = array();
         $this->distinct = null;
+        $this->limit = null;
+        $this->offset = null;
+        $this->sql = null;
 
         return $this;
     }
@@ -200,13 +207,240 @@ class Sparrow {
     }
 
     /**
+     * Adds a limit to the query.
+     *
+     * @param int $limit Number of rows to limit
+     * @param int $offset Number of rows to offset
+     */
+    public function limit($limit, $offset = null) {
+        $this->limit = $limit;
+        if (!is_null($offset)) $this->offset = $offset;
+    }
+
+    /**
+     * Adds an offset to the query.
+     *
+     * @param int $offset Number of rows to offset
+     * @param int $limit Number of rows to limit
+     */
+    public function offset($offset, $limit = null) {
+        $this->offset = $offset;
+        if (!is_null($limit)) $this->limit = $limit;
+    }
+
+    /**
+     * Sets the distinct keywork for a query.
+     */
+    public function distinct($value = true) {
+        $this->distinct = ($value) ? ' DISTINCT ' : '';
+
+        return $this;
+    }
+
+    /**
+     * Builds a select query.
+     *
+     * @param array $fields Array of field names to select
+     * @return string SQL statement
+     */
+    public function select($fields = null) {
+        if (empty($this->table)) return;
+
+        $sql = 'SELECT '.
+            $this->parseFields($fields, '*').
+            ' FROM '.
+            $this->table;
+
+        if (!empty($this->joins)) {
+            foreach ($this->joins as $key => $value) {
+                $sql .= ' '.$key.' ON '.implode('', $value);
+            }
+        }
+
+        if (!empty($this->where)) {
+            $sql .= ' WHERE '.implode('', $this->where);
+        } 
+
+        if (!empty($this->order)) {
+            $sql .= ' ORDER BY '.implode(',', $this->order);
+        }
+
+        if (!empty($this->having)) {
+            $sql .= ' HAVING '.implode('', $this->having);
+        }
+
+        if (!is_null($this->limit)) {
+            $sql .= ' LIMIT '.$this->limit;
+        }
+
+        if (!is_null($this->offset)) {
+            $sql .=' OFFSET '.$this->offset;    
+        }
+
+        $this->sql = $sql;
+
+        return $this;
+    }
+
+    /**
+     * Builds an insert query.
+     *
+     * @param array $data Array of key and values to insert
+     * @return string SQL statement
+     */
+    public function insert(array $data) {
+        if (empty($this->table) || empty($data)) return;
+
+        $sql = 'INSERT INTO '.
+            $this->table;
+
+        $sql .= ' ('.
+            implode(',',
+                array_keys($data)
+            ).
+        ') VALUES ('.
+            implode(',',
+                array_map(
+                    array($this, 'quote'),
+                    array_values($data)
+                )
+            ).
+        ')';
+
+        $this->sql = $sql;
+
+        return $this;
+    }
+
+    /**
+     * Builds an update query.
+     *
+     * @param array $data Array of key and values to insert
+     * @return string SQL statement
+     */
+    public function update(array $data) {
+        if (empty($this->table) || empty($data)) return;
+
+        $sql = 'UPDATE '.
+            $this->table;
+
+        $values = array();
+        foreach ($data as $key => $value) {
+            $values[] = $key.'='.$this->quote($value);
+        }
+        $sql .= ' SET '.implode(',', $values);
+
+        if (!empty($this->where)) {
+            $sql .= ' WHERE '.implode('', $this->where);
+        }
+
+        $this->sql = $sql;
+
+        return $this;
+    }
+
+    /**
+     * Builds a delete query.
+     *
+     * @param array $data Array of key and values to insert
+     * @return string SQL statement
+     */
+    public function delete($field = null, $value = null) {
+        if (empty($this->table)) return;
+
+        if (!is_null($field)) {
+            $this->parseCondition($this->where, $field, $value);
+        }
+
+        $sql = 'DELETE FROM '.
+            $this->table;
+
+        if(!empty($this->where)) {
+            $sql .= ' WHERE '.implode('', $this->where);
+        }
+
+        $this->sql = $sql;
+
+        return $this;
+    }
+
+    /**
+     * Gets the constructed SQL statement.
+     *
+     * @return string SQL statement
+     */
+    public function sql() {
+        return $this->sql;
+    }
+
+    /**
+     * Gets the min value for a specified field.
+     *
+     * @param string $field Field name
+     */
+    public function min() {
+        return $this->fetchColumn(
+            'min_value',
+            $this->select('MIN('.$field.') min_value')->sql()
+        );
+    }
+
+    /**
+     * Gets the max value for a specified field.
+     *
+     * @param string $field Field name
+     */
+    public function max() {
+        return $this->fetchColumn(
+            'max_value',
+            $this->select('MAX('.$field.') max_value')->sql()
+        );
+    }
+
+    /**
+     * Gets the sum value for a specified field.
+     *
+     * @param string $field Field name
+     */
+    public function sum() {
+        return $this->fetchColumn(
+            'sum_value',
+            $this->select('SUM('.$field.') sum_value')->sql()
+        );
+    }
+
+    /**
+     * Gets the average value for a specified field.
+     *
+     * @param string $field Field name
+     */
+    public function avg() {
+        return $this->fetchColumn(
+            'avg_value',
+            $this->select('AVG('.$field.') avg_value')->sql()
+        ); 
+    }
+
+    /**
+     * Gets a count of records for a table.
+     *
+     * @param string $field Field name
+     */
+    public function count($field = null) {
+        return $this->fetchColumn(
+            'num_rows',
+            $this->select('COUNT('.(empty($field) ? '*' : $field).') num_rows')->sql()
+        );
+    }
+
+    /**
      * Parses a set of conditions.
      *
      * @param reference $array Array reference
      * @param string|array $field Database field
      * @param string $value Database value
      */
-    private function parseCondition(&$array, $field, $value = null, $escape = true) {
+    protected function parseCondition(&$array, $field, $value = null, $escape = true) {
         if (is_string($field)) {
             list($field, $operator) = explode(' ', $field);
            
@@ -247,127 +481,6 @@ class Sparrow {
     }
 
     /**
-     * Builds a select query.
-     *
-     * @param array $fields Array of field names to select
-     * @param int $limit Number of rows to limit
-     * @param int $offset Number of rows to offset
-     * @return string SQL statement
-     */
-    public function select($fields = null, $limit = null, $offset = null) {
-        if (empty($this->table)) return;
-
-        $sql = 'SELECT '.
-            $this->parseFields($fields, '*').
-            ' FROM '.
-            $this->table;
-
-        if (!empty($this->joins)) {
-            foreach ($this->joins as $key => $value) {
-                $sql .= ' '.$key.' ON '.implode('', $value);
-            }
-        }
-
-        if (!empty($this->where)) {
-            $sql .= ' WHERE '.implode('', $this->where);
-        } 
-
-        if (!empty($this->order)) {
-            $sql .= ' ORDER BY '.implode(',', $this->order);
-        }
-
-        if (!empty($this->having)) {
-            $sql .= ' HAVING '.implode('', $this->having);
-        }
-
-        if (!is_null($limit)) {
-            $sql .= ' LIMIT '.$limit;
-        }
-
-        if (!is_null($offset)) {
-            $sql .=' OFFSET '.$offset;    
-        }
-
-        return $sql;
-    }
-
-    /**
-     * Builds an insert query.
-     *
-     * @param array $data Array of key and values to insert
-     * @return string SQL statement
-     */
-    public function insert(array $data) {
-        if (empty($this->table) || empty($data)) return;
-
-        $sql = 'INSERT INTO '.
-            $this->table;
-
-        $sql .= ' ('.
-            implode(',',
-                array_keys($data)
-            ).
-        ') VALUES ('.
-            implode(',',
-                array_map(
-                    array($this, 'quote'),
-                    array_values($data)
-                )
-            ).
-        ')';
-
-        return $sql;
-    }
-
-    /**
-     * Builds an update query.
-     *
-     * @param array $data Array of key and values to insert
-     * @return string SQL statement
-     */
-    public function update(array $data) {
-        if (empty($this->table) || empty($data)) return;
-
-        $sql = 'UPDATE '.
-            $this->table;
-
-        $values = array();
-        foreach ($data as $key => $value) {
-            $values[] = $key.'='.$this->quote($value);
-        }
-        $sql .= ' SET '.implode(',', $values);
-
-        if (!empty($this->where)) {
-            $sql .= ' WHERE '.implode('', $this->where);
-        }
-
-        return $sql;
-    }
-
-    /**
-     * Builds a delete query.
-     *
-     * @param array $data Array of key and values to insert
-     * @return string SQL statement
-     */
-    public function delete($field = null, $value = null) {
-        if (empty($this->table)) return;
-
-        if (!is_null($field)) {
-            $this->parseCondition($this->where, $field, $value);
-        }
-
-        $sql = 'DELETE FROM '.
-            $this->table;
-
-        if(!empty($this->where)) {
-            $sql .= ' WHERE '.implode('', $this->where);
-        }
-
-        return $sql;
-    }
-
-    /**
      * Gets the SQL text for field selection.
      *
      * @param string|array $fields Field name or array of field names
@@ -381,75 +494,6 @@ class Sparrow {
             return implode(',', $fields); 
         }
         return $default;
-    }
-
-    /**
-     * Gets the min value for a specified field.
-     *
-     * @param string $field Field name
-     */
-    public function min() {
-        return $this->fetchColumn(
-            'min_value',
-            $this->select('MIN('.$field.') min_value')
-        );
-    }
-
-    /**
-     * Gets the max value for a specified field.
-     *
-     * @param string $field Field name
-     */
-    public function max() {
-        return $this->fetchColumn(
-            'max_value',
-            $this->select('MAX('.$field.') max_value')
-        );
-    }
-
-    /**
-     * Gets the sum value for a specified field.
-     *
-     * @param string $field Field name
-     */
-    public function sum() {
-        return $this->fetchColumn(
-            'sum_value',
-            $this->select('SUM('.$field.') sum_value')
-        );
-    }
-
-    /**
-     * Gets the average value for a specified field.
-     *
-     * @param string $field Field name
-     */
-    public function avg() {
-        return $this->fetchColumn(
-            'avg_value',
-            $this->select('AVG('.$field.') avg_value')
-        ); 
-    }
-
-    /**
-     * Gets a count of records for a table.
-     *
-     * @param string $field Field name
-     */
-    public function count($field = null) {
-        return $this->fetchColumn(
-            'num_rows',
-            $this->select('COUNT('.(empty($field) ? '*' : $field).') num_rows')
-        );
-    }
-
-    /**
-     * Sets the distinct keywork for a query.
-     */
-    public function distinct($value = true) {
-        $this->distinct = ($value) ? ' DISTINCT ' : '';
-
-        return $this;
     }
 
     /**
@@ -557,13 +601,17 @@ class Sparrow {
      * @param object $db Database to run against
      * @return mixed SQL results
      */
-    public function execute($sql) {
+    public function execute($sql = null) {
+        if (!$sql) {
+            $sql = $this->sql();
+        }
+
         $result = null;
 
         $this->num_rows = 0;
         $this->affected_rows = 0;
         $this->insert_id = -1;
-        $this->query = $sql;
+        $this->last_query = $sql;
 
         if ($this->stats_enabled) {
             $this->query_time = microtime(true);
@@ -637,7 +685,7 @@ class Sparrow {
      */
     public function fetch($sql = null) {
         if (!$sql) {
-            $sql = $this->select(); 
+            $sql = $this->select()->sql();
         }
 
         $result = $this->execute($sql);
