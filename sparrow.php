@@ -34,7 +34,7 @@ class Sparrow {
      * @param string $db Database connection string
      */
     public function __construct($connection = null) {
-        if (!is_null($connection)) {
+        if ($connection !== null) {
             $this->db = $this->parseConnection($connection);
         }
     }
@@ -214,7 +214,7 @@ class Sparrow {
      */
     public function limit($limit, $offset = null) {
         $this->limit = $limit;
-        if (!is_null($offset)) $this->offset = $offset;
+        if ($offset === null) $this->offset = $offset;
     }
 
     /**
@@ -225,7 +225,7 @@ class Sparrow {
      */
     public function offset($offset, $limit = null) {
         $this->offset = $offset;
-        if (!is_null($limit)) $this->limit = $limit;
+        if ($limit === null) $this->limit = $limit;
     }
 
     /**
@@ -243,7 +243,7 @@ class Sparrow {
      * @param array $fields Array of field names to select
      * @return string SQL statement
      */
-    public function select($fields = null) {
+    public function select($fields = null, $limit = null, $offset = null) {
         if (empty($this->table)) return;
 
         $sql = 'SELECT '.
@@ -269,12 +269,12 @@ class Sparrow {
             $sql .= ' HAVING '.implode('', $this->having);
         }
 
-        if (!is_null($this->limit)) {
-            $sql .= ' LIMIT '.$this->limit;
+        if ($limit !== null || $this->limit !== null) {
+            $sql .= ' LIMIT '.($limit !== null) ? $limit : $this->limit;
         }
 
-        if (!is_null($this->offset)) {
-            $sql .=' OFFSET '.$this->offset;    
+        if ($offset !== null || $this->offset !== null) {
+            $sql .=' OFFSET '.($offset !== null) ? $offset : $this->offset;
         }
 
         $this->sql = $sql;
@@ -348,7 +348,7 @@ class Sparrow {
     public function delete($field = null, $value = null) {
         if (empty($this->table)) return;
 
-        if (!is_null($field)) {
+        if ($field !== null) {
             $this->parseCondition($this->where, $field, $value);
         }
 
@@ -513,7 +513,7 @@ class Sparrow {
      * @return string Escaped value
      */
     public function escape($value) {
-        if (isset($this->db)) {
+        if ($this->db !== null) {
             $db = $this->connect();
 
             switch ($this->db->type) {
@@ -540,7 +540,7 @@ class Sparrow {
      * @return object Database instance
      */
     public function connect() {
-        if (!$this->db) {
+        if ($this->db === null) {
             throw new Exception('Database is not been defined.');
         }
 
