@@ -40,30 +40,6 @@ class Sparrow {
     }
 
     /**
-     * Parses a connection string into an object.
-     *
-     * @param string $connection Connection string
-     * @return object Connection information
-     */
-    public function parseConnection($connection) {
-        $url = @parse_url($connection);
-
-       if (!isset($url['host'])) {
-            throw new Exception('Database host must be specified in the connection string.');
-        }
-
-        $db = new stdClass;
-        $db->type = $url['scheme'];
-        $db->hostname = $url['host'];
-        $db->database = isset($url['path']) ? substr($url['path'],1) : null;
-        $db->username = isset($url['user']) ? $url['user'] : null;
-        $db->password = isset($url['pass']) ? $url['pass'] : null;
-        $db->port = isset($url['port']) ? $url['port'] : null;
-
-        return $db;
-    }
-
-    /**
      * Sets the table.
      *
      * @param string $table Table name
@@ -214,7 +190,9 @@ class Sparrow {
      */
     public function limit($limit, $offset = null) {
         $this->limit = $limit;
-        if ($offset === null) $this->offset = $offset;
+        if ($offset !== null) $this->offset = $offset;
+
+        return $this;
     }
 
     /**
@@ -225,7 +203,9 @@ class Sparrow {
      */
     public function offset($offset, $limit = null) {
         $this->offset = $offset;
-        if ($limit === null) $this->limit = $limit;
+        if ($limit !== null) $this->limit = $limit;
+
+        return $this;
     }
 
     /**
@@ -244,7 +224,7 @@ class Sparrow {
      * @return string SQL statement
      */
     public function select($fields = null, $limit = null, $offset = null) {
-        if (empty($this->table)) return;
+        if (empty($this->table)) return $this;
 
         $sql = 'SELECT '.
             $this->parseFields($fields, '*').
@@ -270,11 +250,11 @@ class Sparrow {
         }
 
         if ($limit !== null || $this->limit !== null) {
-            $sql .= ' LIMIT '.($limit !== null) ? $limit : $this->limit;
+            $sql .= ' LIMIT '.(($limit !== null) ? $limit : $this->limit);
         }
 
         if ($offset !== null || $this->offset !== null) {
-            $sql .=' OFFSET '.($offset !== null) ? $offset : $this->offset;
+            $sql .= ' OFFSET '.(($offset !== null) ? $offset : $this->offset);
         }
 
         $this->sql = $sql;
@@ -379,7 +359,7 @@ class Sparrow {
      * @param string $field Field name
      */
     public function min() {
-        return $this->fetchColumn(
+        return $this->value(
             'min_value',
             $this->select('MIN('.$field.') min_value')->sql()
         );
@@ -391,7 +371,7 @@ class Sparrow {
      * @param string $field Field name
      */
     public function max() {
-        return $this->fetchColumn(
+        return $this->value(
             'max_value',
             $this->select('MAX('.$field.') max_value')->sql()
         );
@@ -403,7 +383,7 @@ class Sparrow {
      * @param string $field Field name
      */
     public function sum() {
-        return $this->fetchColumn(
+        return $this->value(
             'sum_value',
             $this->select('SUM('.$field.') sum_value')->sql()
         );
@@ -415,7 +395,7 @@ class Sparrow {
      * @param string $field Field name
      */
     public function avg() {
-        return $this->fetchColumn(
+        return $this->value(
             'avg_value',
             $this->select('AVG('.$field.') avg_value')->sql()
         ); 
@@ -427,10 +407,34 @@ class Sparrow {
      * @param string $field Field name
      */
     public function count($field = null) {
-        return $this->fetchColumn(
+        return $this->value(
             'num_rows',
             $this->select('COUNT('.(empty($field) ? '*' : $field).') num_rows')->sql()
         );
+    }
+
+    /**
+     * Parses a connection string into an object.
+     *
+     * @param string $connection Connection string
+     * @return object Connection information
+     */
+    public function parseConnection($connection) {
+        $url = @parse_url($connection);
+
+       if (!isset($url['host'])) {
+            throw new Exception('Database host must be specified in the connection string.');
+        }
+
+        $db = new stdClass;
+        $db->type = $url['scheme'];
+        $db->hostname = $url['host'];
+        $db->database = isset($url['path']) ? substr($url['path'],1) : null;
+        $db->username = isset($url['user']) ? $url['user'] : null;
+        $db->password = isset($url['pass']) ? $url['pass'] : null;
+        $db->port = isset($url['port']) ? $url['port'] : null;
+
+        return $db;
     }
 
     /**
@@ -685,37 +689,41 @@ class Sparrow {
      */
     public function fetch($sql = null) {
         if (!$sql) {
-            $sql = $this->select()->sql();
+            if ($this->sql === null) $this->select();
+            $sql = $this->sql();
         }
 
-        $result = $this->execute($sql);
         $data = array();
 
-        switch ($this->db->type) {
-            case 'mysqli':
-                $data = $result->fetch_all(MYSQLI_ASSOC);
-                $result->close();
-                break;
-       
-            case 'mysql':
-                while ($row = mysql_fetch_assoc($result)) {
-                    $data[] = $row;
-                }
-                mysql_free_result($result);
-                break;
+        if (!empty($sql)) {
+            $result = $this->execute($sql);
 
-            case 'sqlite':
-                $data = sqlite_fetch_all($result, SQLITE_ASSOC);
-                break;
-
-            case 'sqlite3':
-                if ($result) {
-                    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+            switch ($this->db->type) {
+                case 'mysqli':
+                    $data = $result->fetch_all(MYSQLI_ASSOC);
+                    $result->close();
+                    break;
+           
+                case 'mysql':
+                    while ($row = mysql_fetch_assoc($result)) {
                         $data[] = $row;
                     }
-                    $this->num_rows = sizeof($data);
-                }
-                break;
+                    mysql_free_result($result);
+                    break;
+
+                case 'sqlite':
+                    $data = sqlite_fetch_all($result, SQLITE_ASSOC);
+                    break;
+
+                case 'sqlite3':
+                    if ($result) {
+                        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+                            $data[] = $row;
+                        }
+                        $this->num_rows = sizeof($data);
+                    }
+                    break;
+            }
         }
 
         return $data;
@@ -726,7 +734,7 @@ class Sparrow {
      *
      * @param string $sql SQL statement
      */
-    public function fetchRow($sql = null) {
+    public function one($sql = null) {
         $data = $this->fetch($sql);
 
         return (!empty($data)) ? $data[0] : array();
@@ -737,8 +745,8 @@ class Sparrow {
      *
      * @param string $sql SQL statement
      */
-    public function fetchColumn($field, $sql = null) {
-        $row = $this->fetchRow($sql);
+    public function value($field, $sql = null) {
+        $row = $this->one($sql);
 
         return (!empty($row)) ? $row[$field] : null;
     }
