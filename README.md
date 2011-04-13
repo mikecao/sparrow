@@ -317,11 +317,22 @@ To fetch multiple records, use the `fetch` function.
         ->where('id >', 100)
         ->fetch();
 
+The result returned is an array of associative arrays:
+
+    array(
+        array('id' => 101, 'name' => 'joe'),
+        array('id' => 102, 'name' => 'ted');
+    )
+
 To fetch a single record, user the `fetchRow` function.
 
     $row = $db->using('user')
         ->where('id', 123)
         ->fetchRow();
+
+The result returned is a single associative array:
+
+    array('id' => 123, 'name' => 'bob')
 
 To fetch the value of a column, use the `fetchColumn` function and passing the name of the column.
 
@@ -341,7 +352,7 @@ unless you want to specify the fields the return.
 
 For non-queries like update, insert and delete, use the `execute` function after building your query.
 
-    $sql = $db->using('user')
+    $db->using('user')
         ->where('id', 123)
         ->delete()
         ->execute();
@@ -349,6 +360,30 @@ For non-queries like update, insert and delete, use the `execute` function after
 Executes:
 
     DELETE FROM user WHERE id = 123
+
+### Custom Queries
+
+You can also run your own custom SQL by calling the `fetch` methods or `execute` directly.
+
+    $posts = $db->fetch('SELECT * FROM posts');
+
+    $db->execute('UPDATE user SET name = 'bob' WHERE id = 1');
+
+### Query Properties
+
+After executing a query, several property values will be populated which you can access directly.
+
+    // Last query executed
+    $db->last_query;
+
+    // Number of rows returned
+    $db->num_rows;
+
+    // Last insert id
+    $db->last_insert_id;
+
+    // Number of affected rows
+    $db->affected_rows;
 
 ### Helper Methods
 
