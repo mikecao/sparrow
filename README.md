@@ -311,11 +311,11 @@ The supported protocols are `mysql`, `mysqli`, `sqlite`, and `sqlite3`.
 
 ### Fetching records
 
-To fetch multiple records, use the `fetch` function.
+To fetch multiple records, use the `list` function.
 
     $rows = $db->using('user')
         ->where('id >', 100)
-        ->fetch();
+        ->list();
 
 The result returned is an array of associative arrays:
 
@@ -324,11 +324,11 @@ The result returned is an array of associative arrays:
         array('id' => 102, 'name' => 'ted');
     )
 
-To fetch a single record, user the `fetchRow` function.
+To fetch a single record, use the `one` function.
 
     $row = $db->using('user')
         ->where('id', 123)
-        ->fetchRow();
+        ->one();
 
 The result returned is a single associative array:
 
@@ -338,15 +338,15 @@ To fetch the value of a column, use the `fetchColumn` function and passing the n
 
     $username = $db->using('user')
         ->where('id', 123)
-        ->fetchColumn('username');
+        ->value('username');
 
-All the fetch functions automatically perform a select, so you don't need to call the `select` function
+All the fetch functions automatically perform a select, so you don't need to include the `select` function
 unless you want to specify the fields the return.
 
     $row = $db->using('user')
         ->where('id', 123)
         ->select(array('id', 'name'))
-        ->fetchRow();
+        ->one();
 
 ### Non-queries
 

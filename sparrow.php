@@ -683,11 +683,11 @@ class Sparrow {
     }
 
     /**
-     * Fetch rows from a select query.
+     * Fetch multiple rows from a select query.
      *
      * @param string $sql SQL statement
      */
-    public function fetch($sql = null) {
+    public function many($sql = null) {
         if (!$sql) {
             if ($this->sql === null) $this->select();
             $sql = $this->sql();
