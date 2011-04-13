@@ -147,7 +147,7 @@ class Sparrow {
      * @param string $field Field name
      */ 
     public function sortDesc($field) {
-        $this->order[] = $field.' ASC';
+        $this->order[] = $field.' DESC';
 
         return $this;
     }
