@@ -311,11 +311,11 @@ The supported protocols are `mysql`, `mysqli`, `sqlite`, and `sqlite3`.
 
 ### Fetching records
 
-To fetch multiple records, use the `list` function.
+To fetch multiple records, use the `many` function.
 
     $rows = $db->using('user')
         ->where('id >', 100)
-        ->list();
+        ->many();
 
 The result returned is an array of associative arrays:
 
