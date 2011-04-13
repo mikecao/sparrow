@@ -133,11 +133,10 @@ class Sparrow {
      * @param string $field Field name
      */ 
     public function sortAsc($field) {
-        $this->order .= implode(' ', array(
-            (empty($this->order)) ? ' ORDER BY' : ',',
-            (is_array($field)) ? implode(',', $field) : $field,
-            'ASC'
-        ));
+        $join = (empty($this->order)) ? ' ORDER BY' : ',';
+        $fields = (is_array($field)) ? implode(',', $field) : $field;
+
+        $this->order .= $join.' '.$fields.' ASC';
 
         return $this;
     }
@@ -148,11 +147,10 @@ class Sparrow {
      * @param string $field Field name
      */ 
     public function sortDesc($field) {
-        $this->order .= implode(' ', array(
-            (empty($this->order)) ? ' ORDER BY' : ',',
-            (is_array($field)) ? implode(',', $field) : $field,
-            'DESC'
-        ));
+        $join = (empty($this->order)) ? ' ORDER BY' : ',';
+        $fields = (is_array($field)) ? implode(',', $field) : $field;
+
+        $this->order .= $join.' '.$fields.' DESC';
 
         return $this;
     }
@@ -163,10 +161,10 @@ class Sparrow {
      * @param string|array $field Field name or array of field names
      */
     public function groupBy($field) {
-        $this->groups .= implode(' ', array(
-            (empty($this->order)) ? 'GROUP BY' : ',',
-            (is_array($field)) ? implode(',', $field) : $field
-        ));
+        $join = (empty($this->order)) ? ' GROUP BY' : ',';
+        $fields = (is_array($field)) ? implode(',', $field) : $field;
+
+        $this->groups .= $join.' '.$fields;
 
         return $this;
     }
@@ -239,8 +237,9 @@ class Sparrow {
             $this->table.
             $this->joins.
             $this->where.
-            $this->order.
+            $this->groups.
             $this->having.
+            $this->order.
             $this->limit.
             $this->offset;
 
@@ -424,6 +423,7 @@ class Sparrow {
      * @param string $value Condition value
      * @param string $join Joining word
      * @param boolean $escape Escape values setting
+     * @return string Condition as a string
      */
     protected function parseCondition($field, $value = null, $join = '', $escape = true) {
         if (is_string($field)) {
