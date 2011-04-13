@@ -1,17 +1,16 @@
 <?php
 /**
- * Sparrow: A simple SQL engine.
+ * Sparrow: A simple database toolkit.
  *
  * @copyright Copyright (c) 2011, Mike Cao <mike@mikecao.com>
  * @license http://www.opensource.org/licenses/mit-license.php
- * @version 0.1
  */
 class Sparrow {
     protected $table;
     protected $where;
     protected $joins;
     protected $order;
-    protected $group;
+    protected $groups;
     protected $having;
     protected $distinct;
     protected $limit;
@@ -19,6 +18,7 @@ class Sparrow {
     protected $sql;
 
     protected $db;
+    protected $cache;
     protected $stats;
     protected $query_time;
 
@@ -33,7 +33,7 @@ class Sparrow {
      *
      * @param string $db Database connection string
      */
-    public function __construct($connection = null) {
+    public function __construct($connection = null, $cache = array()) {
         if ($connection !== null) {
             $this->db = $this->parseConnection($connection);
         }
@@ -46,15 +46,15 @@ class Sparrow {
      */
     public function using($table) {
         $this->table = $table;
-        $this->where = array();
-        $this->joins = array();
-        $this->order = array();
-        $this->group = array();
-        $this->having = array();
-        $this->distinct = null;
-        $this->limit = null;
-        $this->offset = null;
-        $this->sql = null;
+        $this->where = '';
+        $this->joins = '';
+        $this->order = '';
+        $this->groups = '';
+        $this->having = '';
+        $this->distinct = '';
+        $this->limit = '';
+        $this->offset = '';
+        $this->sql = '';
 
         return $this;
     }
@@ -78,12 +78,8 @@ class Sparrow {
             throw new Exception('Invalid join type.');
         }
 
-        $this->parseCondition(
-            $this->joins[$type.' JOIN '.$table],
-            $fields,
-            null,
-            false
-        );
+        $this->joins .= ' '.$type.' JOIN '.$table.
+            $this->parseCondition($fields, null, ' ON', false);
 
         return $this;
     }
@@ -124,8 +120,9 @@ class Sparrow {
      * @param string|array $field A field name or an array of fields and values.
      * @param string $value A field value to compare to
      */
-    public function where($fields, $value = null) {
-        $this->parseCondition($this->where, $fields, $value);
+    public function where($field, $value = null) {
+        $join = (empty($this->where)) ? ' WHERE' : '';
+        $this->where .= $this->parseCondition($field, $value, $join);
 
         return $this;
     }
@@ -136,7 +133,11 @@ class Sparrow {
      * @param string $field Field name
      */ 
     public function sortAsc($field) {
-        $this->order[] = $field.' ASC';
+        $this->order .= implode(' ', array(
+            (empty($this->order)) ? ' ORDER BY' : ',',
+            (is_array($field)) ? implode(',', $field) : $field,
+            'ASC'
+        ));
 
         return $this;
     }
@@ -147,7 +148,11 @@ class Sparrow {
      * @param string $field Field name
      */ 
     public function sortDesc($field) {
-        $this->order[] = $field.' DESC';
+        $this->order .= implode(' ', array(
+            (empty($this->order)) ? ' ORDER BY' : ',',
+            (is_array($field)) ? implode(',', $field) : $field,
+            'DESC'
+        ));
 
         return $this;
     }
@@ -158,14 +163,10 @@ class Sparrow {
      * @param string|array $field Field name or array of field names
      */
     public function groupBy($field) {
-        if (is_array($field)) {
-            foreach ($field as $value) {
-                $this->group[] = $value;
-            }
-        }
-        else {
-            $this->group[] = $field;
-        }
+        $this->groups .= implode(' ', array(
+            (empty($this->order)) ? 'GROUP BY' : ',',
+            (is_array($field)) ? implode(',', $field) : $field
+        ));
 
         return $this;
     }
@@ -177,7 +178,8 @@ class Sparrow {
      * @param string $value A field value to compare to
      */
     public function having($field, $value = null) {
-        $this->parseCondition($this->having, $field, $value);
+        $join = (empty($this->having)) ? ' HAVING' : '';
+        $this->having .= $this->parseCondition($field, $value, $join);
 
         return $this;
     }
@@ -186,11 +188,11 @@ class Sparrow {
      * Adds a limit to the query.
      *
      * @param int $limit Number of rows to limit
-     * @param int $offset Number of rows to offset
      */
-    public function limit($limit, $offset = null) {
-        $this->limit = $limit;
-        if ($offset !== null) $this->offset = $offset;
+    public function limit($limit) {
+        if ($limit !== null) {
+            $this->limit = ' LIMIT '.$limit;
+        }
 
         return $this;
     }
@@ -199,11 +201,11 @@ class Sparrow {
      * Adds an offset to the query.
      *
      * @param int $offset Number of rows to offset
-     * @param int $limit Number of rows to limit
      */
-    public function offset($offset, $limit = null) {
-        $this->offset = $offset;
-        if ($limit !== null) $this->limit = $limit;
+    public function offset($offset) {
+        if ($offset !== null) {
+            $this->offset = ' OFFSET '.$offset;
+        }
 
         return $this;
     }
@@ -212,7 +214,7 @@ class Sparrow {
      * Sets the distinct keywork for a query.
      */
     public function distinct($value = true) {
-        $this->distinct = ($value) ? ' DISTINCT ' : '';
+        $this->distinct = ($value) ? 'DISTINCT ' : '';
 
         return $this;
     }
@@ -223,39 +225,24 @@ class Sparrow {
      * @param array $fields Array of field names to select
      * @return string SQL statement
      */
-    public function select($fields = null, $limit = null, $offset = null) {
+    public function select($fields = '*', $limit = null, $offset = null) {
         if (empty($this->table)) return $this;
 
+        $fields = (is_array($fields)) ? implode(',', $fields) : $fields;
+        $this->limit($limit);
+        $this->offset($offset);
+
         $sql = 'SELECT '.
-            $this->parseFields($fields, '*').
+            $this->distinct.
+            $fields.
             ' FROM '.
-            $this->table;
-
-        if (!empty($this->joins)) {
-            foreach ($this->joins as $key => $value) {
-                $sql .= ' '.$key.' ON '.implode('', $value);
-            }
-        }
-
-        if (!empty($this->where)) {
-            $sql .= ' WHERE '.implode('', $this->where);
-        } 
-
-        if (!empty($this->order)) {
-            $sql .= ' ORDER BY '.implode(',', $this->order);
-        }
-
-        if (!empty($this->having)) {
-            $sql .= ' HAVING '.implode('', $this->having);
-        }
-
-        if ($limit !== null || $this->limit !== null) {
-            $sql .= ' LIMIT '.(($limit !== null) ? $limit : $this->limit);
-        }
-
-        if ($offset !== null || $this->offset !== null) {
-            $sql .= ' OFFSET '.(($offset !== null) ? $offset : $this->offset);
-        }
+            $this->table.
+            $this->joins.
+            $this->where.
+            $this->order.
+            $this->having.
+            $this->limit.
+            $this->offset;
 
         $this->sql = $sql;
 
@@ -269,23 +256,24 @@ class Sparrow {
      * @return string SQL statement
      */
     public function insert(array $data) {
-        if (empty($this->table) || empty($data)) return;
+        if (empty($this->table) || empty($data)) return $this;
+
+        $keys = implode(',', array_keys($data));
+        $values = implode(',', array_values(
+            array_map(
+                array($this, 'quote'),
+                $data
+            )
+        ));
 
         $sql = 'INSERT INTO '.
-            $this->table;
-
-        $sql .= ' ('.
-            implode(',',
-                array_keys($data)
-            ).
-        ') VALUES ('.
-            implode(',',
-                array_map(
-                    array($this, 'quote'),
-                    array_values($data)
-                )
-            ).
-        ')';
+            $this->table.
+            '('.
+            $keys.') '.
+            'VALUES '.
+            '('.
+            $values.
+            ')';
 
         $this->sql = $sql;
 
@@ -295,24 +283,22 @@ class Sparrow {
     /**
      * Builds an update query.
      *
-     * @param array $data Array of key and values to insert
+     * @param array $data Array of keys and values to insert
      * @return string SQL statement
      */
     public function update(array $data) {
-        if (empty($this->table) || empty($data)) return;
-
-        $sql = 'UPDATE '.
-            $this->table;
+        if (empty($this->table) || empty($data)) return $this;
 
         $values = array();
         foreach ($data as $key => $value) {
             $values[] = $key.'='.$this->quote($value);
         }
-        $sql .= ' SET '.implode(',', $values);
 
-        if (!empty($this->where)) {
-            $sql .= ' WHERE '.implode('', $this->where);
-        }
+        $sql = 'UPDATE '.
+            $this->table.
+            ' SET '.
+            implode(',', $values).
+            $this->where;
 
         $this->sql = $sql;
 
@@ -321,23 +307,17 @@ class Sparrow {
 
     /**
      * Builds a delete query.
-     *
-     * @param array $data Array of key and values to insert
-     * @return string SQL statement
      */
-    public function delete($field = null, $value = null) {
-        if (empty($this->table)) return;
+    public function delete($where = null) {
+        if (empty($this->table)) return $this;
 
-        if ($field !== null) {
-            $this->parseCondition($this->where, $field, $value);
+        if ($where !== null) {
+            $this->where($where);
         }
 
         $sql = 'DELETE FROM '.
-            $this->table;
-
-        if(!empty($this->where)) {
-            $sql .= ' WHERE '.implode('', $this->where);
-        }
+            $this->table.
+            $this->where;
 
         $this->sql = $sql;
 
@@ -438,13 +418,14 @@ class Sparrow {
     }
 
     /**
-     * Parses a set of conditions.
+     * Parses a condition statement.
      *
-     * @param reference $array Array reference
-     * @param string|array $field Database field
-     * @param string $value Database value
+     * @param string $field Database field
+     * @param string $value Condition value
+     * @param string $join Joining word
+     * @param boolean $escape Escape values setting
      */
-    protected function parseCondition(&$array, $field, $value = null, $escape = true) {
+    protected function parseCondition($field, $value = null, $join = '', $escape = true) {
         if (is_string($field)) {
             list($field, $operator) = explode(' ', $field);
            
@@ -464,8 +445,10 @@ class Sparrow {
                 default:
                     $condition = '=';
             }
- 
-            $join = (empty($array)) ? '' : (($field{0} == '|') ? ' OR ' : ' AND ');
+
+            if (empty($join)) { 
+                $join = ($field{0} == '|') ? ' OR' : ' AND';
+            }
 
             if (is_array($value)) {
                 if (strpos($operator, '@') === false) $condition = ' IN ';
@@ -475,29 +458,16 @@ class Sparrow {
                 $value = ($escape && !is_numeric($value)) ? $this->quote($value) : $value;
             }
 
-            $array[] = $join.str_replace('|', '', $field).$condition.$value;
+            return $join.' '.str_replace('|', '', $field).$condition.$value;
         }
         else if (is_array($field)) {
+            $str = '';
             foreach ($field as $key => $value) {
-                $this->parseCondition($array, $key, $value, $escape);
+                $str .= $this->parseCondition($key, $value, $join, $escape);
+                $join = '';
             }
+            return $str;
         }
-    }
-
-    /**
-     * Gets the SQL text for field selection.
-     *
-     * @param string|array $fields Field name or array of field names
-     * @return string Field names as a string
-     */
-    protected function parseFields($fields, $default = '') {
-        if (is_string($fields)) {
-            return $fields;
-        }
-        else if (is_array($fields)) {
-            return implode(',', $fields); 
-        }
-        return $default;
     }
 
     /**
@@ -687,7 +657,7 @@ class Sparrow {
      *
      * @param string $sql SQL statement
      */
-    public function many($sql = null) {
+    public function many($sql = null, $key = null) {
         if (!$sql) {
             if ($this->sql === null) $this->select();
             $sql = $this->sql();
@@ -734,7 +704,9 @@ class Sparrow {
      *
      * @param string $sql SQL statement
      */
-    public function one($sql = null) {
+    public function one($sql = null, $key = null) {
+        $this->limit(1);
+
         $data = $this->fetch($sql);
 
         return (!empty($data)) ? $data[0] : array();
@@ -745,7 +717,7 @@ class Sparrow {
      *
      * @param string $sql SQL statement
      */
-    public function value($field, $sql = null) {
+    public function value($field, $sql = null, $key = null) {
         $row = $this->one($sql);
 
         return (!empty($row)) ? $row[$field] : null;
