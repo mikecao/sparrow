@@ -334,7 +334,7 @@ The result returned is a single associative array:
 
     array('id' => 123, 'name' => 'bob')
 
-To fetch the value of a column, use the `fetchColumn` function and passing the name of the column.
+To fetch the value of a column, use the `value` function and passing the name of the column.
 
     $username = $db->using('user')
         ->where('id', 123)
@@ -363,9 +363,9 @@ Executes:
 
 ### Custom Queries
 
-You can also run your own custom SQL by calling the `fetch` methods or `execute` directly.
+You can also run raw SQL by calling the any of the fetch methods or `execute` directly.
 
-    $posts = $db->fetch('SELECT * FROM posts');
+    $posts = $db->many('SELECT * FROM posts');
 
     $db->execute('UPDATE user SET name = 'bob' WHERE id = 1');
 
@@ -380,7 +380,7 @@ After executing a query, several property values will be populated which you can
     $db->num_rows;
 
     // Last insert id
-    $db->last_insert_id;
+    $db->insert_id;
 
     // Number of affected rows
     $db->affected_rows;
