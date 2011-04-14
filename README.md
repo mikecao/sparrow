@@ -319,7 +319,7 @@ The connection string uses the following format:
 
     protocol://user:pass@hostname[:port]/dbname
 
-The supported protocols are `mysql`, `mysqli`, `sqlite`, and `sqlite3`.
+The supported protocols are `mysql`, `mysqli`, `pgsql`, `sqlite`, and `sqlite3`.
 
 ### Fetching records
 
@@ -353,7 +353,7 @@ To fetch the value of a column, use the `value` function and pass in the name of
         ->value('username');
 
 All the fetch functions automatically perform a select, so you don't need to include the `select` function
-unless you want to specify the fields the return.
+unless you want to specify the fields to return.
 
     $row = $db->using('user')
         ->where('id', 123)

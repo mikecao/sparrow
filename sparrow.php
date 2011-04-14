@@ -517,6 +517,8 @@ class Sparrow {
                     return $db->real_escape_string($value);
                 case 'mysql':
                     return mysql_real_escape_string($value, $db);
+                case 'pgsql':
+                    return pg_escape_string($db, $value);
                 case 'sqlite':
                     return sqlite_escape_string($value);
                 case 'sqlite3':
@@ -573,6 +575,19 @@ class Sparrow {
 
                     break;
 
+                case 'pgsql':
+                    $str = sprintf(
+                        'host=%s dbname=%s user=%s password=%s',
+                        $this->db->hostname,
+                        $this->db->database,
+                        $this->db->username,
+                        $this->db->password
+                    );
+
+                    $db = pg_connect($str);
+
+                    break;
+
                 case 'sqlite':
                     $db = sqlite_open($this->db->database, 0666, $error);
 
@@ -624,9 +639,9 @@ class Sparrow {
                         throw new Exception($db->error);
                     }
 
-                    $this->num_rows = @$result->num_rows;
-                    $this->affected_rows = @$db->affected_rows;
-                    $this->insert_id = @$db->insert_id;
+                    $this->num_rows = $result->num_rows;
+                    $this->affected_rows = $db->affected_rows;
+                    $this->insert_id = $db->insert_id;
 
                     break;
 
@@ -640,6 +655,17 @@ class Sparrow {
                     $this->num_rows = mysql_num_rows($result);
                     $this->affected_rows = mysql_affected_rows($db);
                     $this->insert_id = mysql_insert_id($db);
+
+                case 'pgsql':
+                    $result = pg_query($db, $sql);
+
+                    if (!$result) {
+                        throw new Exception(pg_last_error($db));
+                    }
+
+                    $this->num_rows = pg_num_rows($result);
+                    $this->affected_rows = pg_affected_rows($result);
+                    $this->insert_id = pg_last_oid($result);
 
                 case 'sqlite':
                     $result = sqlite_query($db, $sql);
@@ -706,6 +732,11 @@ class Sparrow {
                     mysql_free_result($result);
                     break;
 
+                case 'pgsql':
+                    $data = pg_fetch_all($result);
+                    pg_free_result($result);
+                    break;
+
                 case 'sqlite':
                     $data = sqlite_fetch_all($result, SQLITE_ASSOC);
                     break;
@@ -715,6 +746,7 @@ class Sparrow {
                         while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
                             $data[] = $row;
                         }
+                        $result->finalize();
                         $this->num_rows = sizeof($data);
                     }
                     break;
