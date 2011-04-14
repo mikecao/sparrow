@@ -133,12 +133,7 @@ class Sparrow {
      * @param string $field Field name
      */ 
     public function sortAsc($field) {
-        $join = (empty($this->order)) ? ' ORDER BY' : ',';
-        $fields = (is_array($field)) ? implode(',', $field) : $field;
-
-        $this->order .= $join.' '.$fields.' ASC';
-
-        return $this;
+        return $this->orderBy($field, 'ASC');
     }
 
     /**
@@ -147,10 +142,30 @@ class Sparrow {
      * @param string $field Field name
      */ 
     public function sortDesc($field) {
-        $join = (empty($this->order)) ? ' ORDER BY' : ',';
-        $fields = (is_array($field)) ? implode(',', $field) : $field;
+        return $this->orderBy($field, 'DESC');        
+    }
 
-        $this->order .= $join.' '.$fields.' DESC';
+    /**
+     * Adds fields to order by.
+     *
+     * @param string $field Field name
+     * @param string $direction Sort direction 
+     */
+    public function orderBy($field, $direction = 'ASC') {
+        $join = (empty($this->order)) ? ' ORDER BY' : ',';
+
+        if (is_array($field)) {
+            foreach ($field as $key => $value) {
+                $field[$key] = $value.' '.$direction;
+            }
+        }
+        else {
+            $field .= ' '.$direction;
+        }
+
+        $fields = (is_array($field)) ? implode(', ', $field) : $field;
+
+        $this->order .= $join.' '.$fields;
 
         return $this;
     }
