@@ -201,10 +201,14 @@ class Sparrow {
      * Adds a limit to the query.
      *
      * @param int $limit Number of rows to limit
+     * @param int $offset Number of rows to offset
      */
-    public function limit($limit) {
+    public function limit($limit, $offset = null) {
         if ($limit !== null) {
             $this->limit = ' LIMIT '.$limit;
+        }
+        if ($offset !== null) {
+            $this->offset($offset);
         }
 
         return $this;
@@ -214,10 +218,14 @@ class Sparrow {
      * Adds an offset to the query.
      *
      * @param int $offset Number of rows to offset
+     * @param int $limit Number of rows to limit
      */
-    public function offset($offset) {
+    public function offset($offset, $limit = null) {
         if ($offset !== null) {
             $this->offset = ' OFFSET '.$offset;
+        }
+        if ($limit !== null) {
+            $this->limit($limit);
         }
 
         return $this;
@@ -590,7 +598,7 @@ class Sparrow {
      * @return mixed SQL results
      */
     public function execute($sql = null) {
-        if (!$sql) {
+        if ($sql === null) {
             $sql = $this->sql();
         }
 
@@ -605,53 +613,55 @@ class Sparrow {
             $this->query_time = microtime(true);
         }
 
-        $db = $this->connect();
+        if (!empty($sql)) {
+            $db = $this->connect();
 
-        switch ($this->db->type) {
-            case 'mysqli':
-                $result = $db->query($sql);
+            switch ($this->db->type) {
+                case 'mysqli':
+                    $result = $db->query($sql);
 
-                if (!$result) {
-                    throw new Exception($db->error);
-                }
+                    if (!$result) {
+                        throw new Exception($db->error);
+                    }
 
-                $this->num_rows = @$result->num_rows;
-                $this->affected_rows = @$db->affected_rows;
-                $this->insert_id = @$db->insert_id;
+                    $this->num_rows = @$result->num_rows;
+                    $this->affected_rows = @$db->affected_rows;
+                    $this->insert_id = @$db->insert_id;
 
-                break;
+                    break;
 
-            case 'mysql':
-                $result = mysql_query($sql, $db);
+                case 'mysql':
+                    $result = mysql_query($sql, $db);
 
-                if (!$result) {
-                    throw new Exception(mysql_error());
-                }
+                    if (!$result) {
+                        throw new Exception(mysql_error());
+                    }
 
-                $this->num_rows = mysql_num_rows($result);
-                $this->affected_rows = mysql_affected_rows($db);
-                $this->insert_id = mysql_insert_id($db);
+                    $this->num_rows = mysql_num_rows($result);
+                    $this->affected_rows = mysql_affected_rows($db);
+                    $this->insert_id = mysql_insert_id($db);
 
-            case 'sqlite':
-                $result = sqlite_query($db, $sql);
+                case 'sqlite':
+                    $result = sqlite_query($db, $sql);
 
-                $this->num_rows = sqlite_num_rows($result);
-                $this->affected_rows = sqlite_changes($db);
-                $this->insert_id = sqlite_last_insert_rowid($db);
+                    $this->num_rows = sqlite_num_rows($result);
+                    $this->affected_rows = sqlite_changes($db);
+                    $this->insert_id = sqlite_last_insert_rowid($db);
 
-                return $result;
+                    return $result;
 
-            case 'sqlite3':
-                $result = $db->query($sql);
+                case 'sqlite3':
+                    $result = $db->query($sql);
 
-                if ($result === false) {
-                    throw new Exception($db->lastErrorMsg());
-                }
+                    if ($result === false) {
+                        throw new Exception($db->lastErrorMsg());
+                    }
 
-                $this->affected_rows = ($result) ? $db->changes() : 0;
-                $this->insert_id = $db->lastInsertRowId();
+                    $this->affected_rows = ($result) ? $db->changes() : 0;
+                    $this->insert_id = $db->lastInsertRowId();
 
-                return $result;
+                    return $result;
+            }
         }
 
         if ($this->stats_enabled) {
@@ -672,9 +682,10 @@ class Sparrow {
      * @param string $sql SQL statement
      */
     public function many($sql = null, $key = null) {
-        if (!$sql) {
-            if ($this->sql === null) $this->select();
-            $sql = $this->sql();
+        if ($sql === null) {
+            $sql = (empty($this->sql)) ?
+                 $this->select()->sql() :
+                 $this->sql();
         }
 
         $data = array();
