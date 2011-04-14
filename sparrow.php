@@ -267,12 +267,9 @@ class Sparrow {
 
         $sql = 'INSERT INTO '.
             $this->table.
-            '('.
-            $keys.') '.
-            'VALUES '.
-            '('.
-            $values.
-            ')';
+            '('.$keys.')'.
+            ' VALUES '.
+            '('.$values.')';
 
         $this->sql = $sql;
 
@@ -427,6 +424,8 @@ class Sparrow {
      */
     protected function parseCondition($field, $value = null, $join = '', $escape = true) {
         if (is_string($field)) {
+            if ($value === null) return $join.' '.trim($field);
+
             list($field, $operator) = explode(' ', $field);
            
             switch ($operator) {
@@ -707,7 +706,7 @@ class Sparrow {
     public function one($sql = null, $key = null) {
         $this->limit(1);
 
-        $data = $this->fetch($sql);
+        $data = $this->many($sql);
 
         return (!empty($data)) ? $data[0] : array();
     }
