@@ -214,9 +214,10 @@ Output:
 
     SELECT * FROM user INNER JOIN role ON role.id = user.id
 
-To build other types of joins you can use the alternate join functions `leftJoin`, `rightJoin`, and `fullJoin`.
+The default join type is an `INNER` join. To build other types of joins you can use
+the alternate join functions `leftJoin`, `rightJoin`, and `fullJoin`.
 
-The join array works just like where conditions.
+The join array works just like where conditions, so you can use custom operators and add multiple conditions.
 
     echo $db->using('user')
         ->join('role', array('role.id' => 'user.id', 'role.id >' => 10))
@@ -239,6 +240,17 @@ To add sorting to a query, user the `sortAsc` and `sortDesc` functions.
 Output:
 
     SELECT * FROM user ORDER BY id DESC
+
+You can also pass an array to the sort functions.
+
+    echo $db->using('user')
+        ->sortAsc(array('rank','name'))
+        ->select()
+        ->sql();
+
+Output:
+
+    SELECT * FROM user ORDER BY rank ASC, name ASC
 
 ### Grouping
 
