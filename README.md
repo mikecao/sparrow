@@ -334,7 +334,7 @@ The result returned is a single associative array:
 
     array('id' => 123, 'name' => 'bob')
 
-To fetch the value of a column, use the `value` function and passing the name of the column.
+To fetch the value of a column, use the `value` function and pass in the name of the column.
 
     $username = $db->using('user')
         ->where('id', 123)
@@ -363,11 +363,26 @@ Executes:
 
 ### Custom Queries
 
-You can also run raw SQL by calling the any of the fetch methods or `execute` directly.
+You can also run raw SQL by calling any of the fetch or execute methods directly.
 
     $posts = $db->many('SELECT * FROM posts');
 
+    $user = $db->one('SELECT * FROM user WHERE id = 123');
+
     $db->execute('UPDATE user SET name = 'bob' WHERE id = 1');
+
+### Escaping Values
+
+Sparrow's SQL building functions automatically escape values to prevent SQL injection.
+To escape values manually, like when you're writing own queries, you can use the `escape` function.
+
+    $name = "O'Dell";
+
+    printf("SELECT * FROM user WHERE name = '%s'", $db->escape($name));
+
+Output:
+
+    SELECT * FROM user WHERE name = 'O\'Dell'
 
 ### Query Properties
 
@@ -384,6 +399,8 @@ After executing a query, several property values will be populated which you can
 
     // Number of affected rows
     $db->affected_rows;
+
+These values are reset every time a new query is executed.
 
 ### Helper Methods
 
@@ -407,6 +424,14 @@ To get the sum value from a table.
 
     $avg = $db->using('employee')->sum('salary');
 
+### Direct Access
+
+You can also access the database object directly by calling the  `getDB` function.
+
+    $mysql = $db->getDB();
+
+    mysql_info($mysql);
+
 ### Statistics
 
 Sparrow has built in query statistics tracking. To enable it, just set the `stats_enabled` property.
@@ -419,6 +444,28 @@ After running your queries, get the stats array:
 
 The stats array contains the total time for all queries and an array of all queries executed
 with individual query times.
+
+    array(2) {
+      ["query_time"]=>
+          float(0.0013890266418457)
+      ["queries"]=>
+      array(2) {
+        [0]=>
+        array(2) {
+          ["query"]=>
+              string(34) "SELECT * FROM photo WHERE pid=1"
+          ["time"]=>
+              float(0.0010988712310791)
+        }
+        [1]=>
+        array(2) {
+          ["query"]=>
+              string(32) "SELECT * FROM user WHERE uid=1"
+          ["time"]=>
+              float(0.0002901554107666)
+        }
+      }
+    }
 
 ## License
 
