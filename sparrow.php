@@ -44,7 +44,7 @@ class Sparrow {
      *
      * @param string $table Table name
      */
-    public function using($table) {
+    public function from($table) {
         $this->table = $table;
         $this->where = '';
         $this->joins = '';
@@ -450,22 +450,27 @@ class Sparrow {
             if ($value === null) return $join.' '.trim($field);
 
             list($field, $operator) = explode(' ', $field);
-           
-            switch ($operator) {
-                case '%':
-                    $condition = ' LIKE ';
-                    break;
-                case '!%':
-                    $condition = ' NOT LIKE ';
-                    break;
-                case '@':
-                    $condition = ' IN ';
-                    break;
-                case '!@':
-                    $condition = ' NOT IN ';
-                    break;
-                default:
-                    $condition = '=';
+          
+            if (!empty($operator)) {
+                switch ($operator) {
+                    case '%':
+                        $condition = ' LIKE ';
+                        break;
+                    case '!%':
+                        $condition = ' NOT LIKE ';
+                        break;
+                    case '@':
+                        $condition = ' IN ';
+                        break;
+                    case '!@':
+                        $condition = ' NOT IN ';
+                        break;
+                    default:
+                        $condition = $operator;
+                }
+            }
+            else {
+                $condition = '=';
             }
 
             if (empty($join)) { 
