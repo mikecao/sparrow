@@ -11,7 +11,7 @@ Sparrow is a simple SQL builder and database abstraction layer.
     $db = new Sparrow();
 
     // Select a table
-    $db->using('user')
+    $db->from('user')
 
     // Build a select query
     $db->select();
@@ -27,13 +27,13 @@ Output:
 
 Sparrow allows you to chain methods together, so you can instead do:
 
-    echo $db->using('user')->select()->sql();
+    echo $db->from('user')->select()->sql();
 
 ### Where Conditions
 
 To add where conditions to your query, use the `where` function.
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->where('id', 123)
         ->select()
         ->sql();
@@ -44,7 +44,7 @@ Output:
 
 You can call where multiple times to add multiple conditions.
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->where('id', 123)
         ->where('name', 'bob')
         ->select()
@@ -58,14 +58,14 @@ You can also pass an array to the where function. The following would produce th
 
     $where = array('id' => 123, 'name' => 'bob');
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->where($where)
         ->select()
         ->sql();
 
 You can even pass in a string literal.
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->where('id = 99')
         ->select()
         ->sql();
@@ -79,7 +79,7 @@ Output:
 The default operator for where queries is `=`. You can use different operators by placing
 them after the field declaration.
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->where('id >', 123)
         ->select()
         ->sql();
@@ -93,7 +93,7 @@ Output:
 By default where conditions are joined together by `AND` keywords. To use OR instead, simply
 place a `|` delimiter before the field name.
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->where('id <', 10)
         ->where('|id >', 20)
         ->select()
@@ -107,7 +107,7 @@ Output:
 
 To build a LIKE query you can use the special `%` operator.
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->where('name %', '%bob%')
         ->select()
         ->sql();
@@ -118,7 +118,7 @@ Output:
 
 To build a NOT LIKE query, add a `!` before the `%` operator.
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->where('name !%', '%bob%')
         ->select()
         ->sql();
@@ -132,7 +132,7 @@ Output:
 To use an IN statement in your where condition, user the special '@' operator
 and pass in an array of values.
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->where('id @', array(10, 20, 30))
         ->select()
         ->sql();
@@ -143,7 +143,7 @@ Output:
 
 To build a NOT IN query, add a `!` before the `@` operator.
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->where('id !@', array(10, 20, 30))
         ->select()
         ->sql();
@@ -156,7 +156,7 @@ Output:
 
 To select specific fields, pass an array in to the `select` function.
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->select(array('id','name'))
         ->sql();
 
@@ -168,7 +168,7 @@ Output:
 
 To add a limit or offset to a query, you can user the `limit` and `offset` functions.
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->limit(10)
         ->offset(20)
         ->select()
@@ -180,7 +180,7 @@ Output:
 
 You can also pass in additional parameters to the `select` function.
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->select('*', 50, 10)
         ->sql();
 
@@ -192,7 +192,7 @@ Output:
 
 To add a DISTINCT keyword to your query, call the `distinct` function.
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->distinct()
         ->select('name')
         ->sql();
@@ -205,7 +205,7 @@ Output:
 
 To add a table join, use the `join` function and pass in an array of fields to join on.
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->join('role', array('role.id' => 'user.id'))
         ->select()
         ->sql();
@@ -219,7 +219,7 @@ the alternate join functions `leftJoin`, `rightJoin`, and `fullJoin`.
 
 The join array works just like where conditions, so you can use custom operators and add multiple conditions.
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->join('role', array('role.id' => 'user.id', 'role.id >' => 10))
         ->select()
         ->sql();
@@ -232,7 +232,7 @@ Output:
 
 To add sorting to a query, user the `sortAsc` and `sortDesc` functions.
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->sortDesc('id')
         ->select()
         ->sql();
@@ -243,7 +243,7 @@ Output:
 
 You can also pass an array to the sort functions.
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->sortAsc(array('rank','name'))
         ->select()
         ->sql();
@@ -256,7 +256,7 @@ Output:
 
 To add a field to group by, use the `groupBy` function.
 
-    echo $db->using('id')
+    echo $db->from('id')
         ->groupBy('points')
         ->select(array('id','count(*)'))
         ->sql();
@@ -271,7 +271,7 @@ To build an insert query, pass in an array of data to the `insert` function.
 
     $data = array('id' => 123, 'name' => 'bob');
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->insert($data)
         ->sql();
 
@@ -286,7 +286,7 @@ To build an update query, pass in an array of data to the `update` function.
     $data = array('name' => 'bob', 'email' => 'bob@aol.com');
     $where = array('id' => 123);
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->where($where)
         ->update($data)
         ->sql();
@@ -299,7 +299,7 @@ Output:
 
 To build a delete query, use the `delete` function.
 
-    echo $db->using('user')
+    echo $db->from('user')
         ->where('id', 123)
         ->delete()
         ->sql();
@@ -325,7 +325,7 @@ The supported protocols are `mysql`, `mysqli`, `pgsql`, `sqlite`, and `sqlite3`.
 
 To fetch multiple records, use the `many` function.
 
-    $rows = $db->using('user')
+    $rows = $db->from('user')
         ->where('id >', 100)
         ->many();
 
@@ -338,7 +338,7 @@ The result returned is an array of associative arrays:
 
 To fetch a single record, use the `one` function.
 
-    $row = $db->using('user')
+    $row = $db->from('user')
         ->where('id', 123)
         ->one();
 
@@ -348,14 +348,14 @@ The result returned is a single associative array:
 
 To fetch the value of a column, use the `value` function and pass in the name of the column.
 
-    $username = $db->using('user')
+    $username = $db->from('user')
         ->where('id', 123)
         ->value('username');
 
 All the fetch functions automatically perform a select, so you don't need to include the `select` function
 unless you want to specify the fields to return.
 
-    $row = $db->using('user')
+    $row = $db->from('user')
         ->where('id', 123)
         ->select(array('id', 'name'))
         ->one();
@@ -364,7 +364,7 @@ unless you want to specify the fields to return.
 
 For non-queries like update, insert and delete, use the `execute` function after building your query.
 
-    $db->using('user')
+    $db->from('user')
         ->where('id', 123)
         ->delete()
         ->execute();
@@ -418,23 +418,23 @@ These values are reset every time a new query is executed.
 
 To get a count of rows in a table.
 
-    $count = $db->using('user')->count();
+    $count = $db->from('user')->count();
 
 To get the minimum value from a table.
 
-    $min = $db->using('employee')->min('salary');
+    $min = $db->from('employee')->min('salary');
 
 To get the maximum value from a table.
 
-    $max = $db->using('employee')->max('salary');
+    $max = $db->from('employee')->max('salary');
 
 To get the average value from a table.
 
-    $avg = $db->using('employee')->avg('salary');
+    $avg = $db->from('employee')->avg('salary');
 
 To get the sum value from a table.
 
-    $avg = $db->using('employee')->sum('salary');
+    $avg = $db->from('employee')->sum('salary');
 
 ### Direct Access
 
