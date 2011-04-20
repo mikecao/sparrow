@@ -317,7 +317,7 @@ You just need to pass in a connection string to the class constructor:
 
 The connection string uses the following format:
 
-    protocol://user:pass@hostname[:port]/dbname
+    protocol://user:pass@hostname[:port]/database
 
 The supported protocols are `mysql`, `mysqli`, `pgsql`, `sqlite`, and `sqlite3`.
 
@@ -454,9 +454,9 @@ To get the sum value from a table.
 
 ### Direct Access
 
-You can also access the database object directly by using the  `getDB` function.
+You can also access the database object directly by using the  `getDb` function.
 
-    $mysql = $db->getDB();
+    $mysql = $db->getDb();
 
     mysql_info($mysql);
 
@@ -480,7 +480,7 @@ You can also pass in a cache object.
 
     $db->setCache($cache);
 
-You can then pass a cache key to the query functions and Sparrow will try to fetch from the cache before
+Now you can pass a cache key to the query functions and Sparrow will try to fetch from the cache before
 executing the query. If there is a cache miss, Sparrow will execute the query and store the results
 using the specified cache key.
 
