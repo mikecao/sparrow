@@ -478,6 +478,8 @@ class Sparrow {
     public function sql($sql = null) {
         if ($sql !== null) {
             $this->sql = $sql;
+
+            return $this;
         }
         return $this->sql;
     }
