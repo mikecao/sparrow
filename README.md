@@ -313,13 +313,29 @@ Output:
 Sparrow can also execute the queries it builds.
 You just need to pass in a connection string to the class constructor:
 
-    $db = new Sparrow('mysql://admin:pasSW0rd@localhost/mydb');
+    $db = new Sparrow('mysql://admin:hunter2@localhost/mydb');
 
 The connection string uses the following format:
 
     protocol://user:pass@hostname[:port]/dbname
 
 The supported protocols are `mysql`, `mysqli`, `pgsql`, `sqlite`, and `sqlite3`.
+
+You can also connect using the `setDb` method which allows you to pass in a connection string:
+
+    $db->setDb('mysql://admin:hunter2@localhost/mydb');
+
+Or a database object:
+
+    $mysql = mysql_connect('localhost', 'admin', 'hunter2');
+
+    $db->setDb($mysql);
+
+You can also pass in an object to the constructor.
+
+    $mysql = mysql_connect('localhost', 'admin', 'hunter2');
+
+    $db = new Sparrow($mysql);
 
 ### Fetching records
 
@@ -375,13 +391,13 @@ Executes:
 
 ### Custom Queries
 
-You can also run raw SQL by calling any of the fetch or execute methods directly.
+You can also run raw SQL by passing it to the `sql` function.
 
-    $posts = $db->many('SELECT * FROM posts');
+    $posts = $db->sql('SELECT * FROM posts')->many();
 
-    $user = $db->one('SELECT * FROM user WHERE id = 123');
+    $user = $db->sql('SELECT * FROM user WHERE id = 123')->one();
 
-    $db->execute('UPDATE user SET name = 'bob' WHERE id = 1');
+    $db->sql('UPDATE user SET name = 'bob' WHERE id = 1')->execute();
 
 ### Escaping Values
 
@@ -438,13 +454,86 @@ To get the sum value from a table.
 
 ### Direct Access
 
-You can also access the database object directly by calling the  `getDB` function.
+You can also access the database object directly by using the  `getDB` function.
 
     $mysql = $db->getDB();
 
     mysql_info($mysql);
 
-### Statistics
+## Caching
+
+To enable caching, you can pass in a connection string as the second parameter in the constructor:
+
+    $db = new Sparrow(
+        'mysql://admin:hunter2@localhost/mydb',
+        'memcache://localhost:11211'
+    );
+
+Or use the `setCache` method:
+
+    $db->setCache('memcache://localhost:11211');
+
+You can also pass in a cache object.
+
+    $cache = new Memcache();
+    $cache->addServer('localhost', 11211);
+
+    $db->setCache($cache);
+
+You can then pass a cache key to the query functions and Sparrow will try to fetch from the cache before
+executing the query. If there is a cache miss, Sparrow will execute the query and store the results
+using the specified cache key.
+
+    $key = 'all_users';
+
+    $users = $db->from('user')->many($key);
+
+### Cache Types
+
+The supported caches are `memcache`, `memcached`, `apc`, `xcache`, `file` and `memory`.
+
+To use `memcache` or `memcached`, you need to use the following connection string:
+
+    protocol://hostname:port
+
+To use `apc` or `xcache`, just pass in the cache name:
+
+    $db->setCache('apc');
+
+To use the filesystem as a cache, pass in a directory path:
+
+    $db->setCache('/usr/local/cache');
+
+    $db->setCache('./cache');
+
+The default cache is `memory` and only lasts the duration of the script. You don't need to do anything
+enable the memory cache.
+
+### Direct Access
+
+You can access the cache object directly by using the `getCache` function.
+
+    $memcache = $db->getCache();
+
+    echo $memcache->getVersion();
+
+You can manipulate the cache data directly as well. To cache a value use the `store` function.
+
+    $db->store('id', 123);
+
+To get a cached value use the `fetch` function.
+
+    $id = $db->fetch('id');
+
+To delete a cached value use the `clear` function.
+
+    $db->clear('id');
+
+To completely empty the cache use the `flush` function.
+
+    $db->flush();
+
+## Statistics
 
 Sparrow has built in query statistics tracking. To enable it, just set the `stats_enabled` property.
 
@@ -457,26 +546,42 @@ After running your queries, get the stats array:
 The stats array contains the total time for all queries and an array of all queries executed
 with individual query times.
 
-    array(2) {
-      ["query_time"]=>
-          float(0.0013890266418457)
+    array(6) {
       ["queries"]=>
       array(2) {
         [0]=>
-        array(2) {
+        array(4) {
           ["query"]=>
-              string(34) "SELECT * FROM photo WHERE pid=1"
+              string(38) "SELECT * FROM user WHERE uid=1 LIMIT 1"
           ["time"]=>
-              float(0.0010988712310791)
+              float(0.00016617774963379)
+          ["rows"]=>
+              int(1)
+          ["changes"]=>
+              int(0)
         }
         [1]=>
-        array(2) {
+        array(4) {
           ["query"]=>
-              string(32) "SELECT * FROM user WHERE uid=1"
+              string(39) "SELECT * FROM user WHERE uid=10 LIMIT 1"
           ["time"]=>
-              float(0.0002901554107666)
+              float(0.00026392936706543)
+          ["rows"]=>
+          int(0)
+              ["changes"]=>
+          int(0)
         }
       }
+      ["total_time"]=>
+          float(0.00043010711669922)
+      ["num_queries"]=>
+          int(2)
+      ["num_rows"]=>
+          int(1)
+      ["num_changes"]=>
+          int(0)
+      ["avg_query_time"]=>
+          float(0.00021505355834961)
     }
 
 ## License

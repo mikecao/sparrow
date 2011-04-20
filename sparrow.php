@@ -18,26 +18,152 @@ class Sparrow {
     protected $sql;
 
     protected $db;
+    protected $db_type;
     protected $cache;
+    protected $cache_type;
     protected $stats;
     protected $query_time;
+    protected $caller;
 
     public $last_query;
     public $num_rows;
     public $insert_id;
     public $affected_rows;
+    public $is_cached = false;
     public $stats_enabled = false;
 
     /**
      * Class constructor.
      *
-     * @param string $db Database connection string
+     * @param string|object $db Database connection string or object
+     * @param string|object $cache Cache connection string or object
      */
-    public function __construct($connection = null, $cache = array()) {
-        if ($connection !== null) {
-            $this->db = $this->parseConnection($connection);
+    public function __construct($db = null, $cache = null) {
+        if ($db !== null) {
+            $this->setDb($db);
+        }
+        if ($cache !== null) {
+            $this->setCache($cache);
         }
     }
+
+    /*** Core Methods ***/
+
+    /**
+     * Parses a connection string into an object.
+     *
+     * @param string $connection Connection string
+     * @return object Connection information
+     */
+    public function parseConnection($connection) {
+        $url = @parse_url($connection);
+
+        if (empty($url)) {
+            throw new Exception('Invalid connection string.');
+        }
+
+        $cfg = new stdClass;
+        $cfg->type = (isset($url['scheme'])) ? $url['scheme'] : $url['path'];
+        $cfg->hostname = $url['host'];
+        $cfg->database = isset($url['path']) ? substr($url['path'],1) : null;
+        $cfg->username = isset($url['user']) ? $url['user'] : null;
+        $cfg->password = isset($url['pass']) ? $url['pass'] : null;
+        $cfg->port = isset($url['port']) ? $url['port'] : null;
+
+        return $cfg;
+    }
+
+    /**
+     * Parses a condition statement.
+     *
+     * @param string $field Database field
+     * @param string $value Condition value
+     * @param string $join Joining word
+     * @param boolean $escape Escape values setting
+     * @return string Condition as a string
+     */
+    protected function parseCondition($field, $value = null, $join = '', $escape = true) {
+        if (is_string($field)) {
+            if ($value === null) return $join.' '.trim($field);
+
+            list($field, $operator) = explode(' ', $field);
+
+            if (!empty($operator)) {
+                switch ($operator) {
+                    case '%':
+                        $condition = ' LIKE ';
+                        break;
+
+                    case '!%':
+                        $condition = ' NOT LIKE ';
+                        break;
+
+                    case '@':
+                        $condition = ' IN ';
+                        break;
+
+                    case '!@':
+                        $condition = ' NOT IN ';
+                        break;
+
+                    default:
+                        $condition = $operator;
+                }
+            }
+            else {
+                $condition = '=';
+            }
+
+            if (empty($join)) { 
+                $join = ($field{0} == '|') ? ' OR' : ' AND';
+            }
+
+            if (is_array($value)) {
+                if (strpos($operator, '@') === false) $condition = ' IN ';
+                $value = '('.implode(',', array_map(array($this, 'quote'), $value)).')';
+            }
+            else {
+                $value = ($escape && !is_numeric($value)) ? $this->quote($value) : $value;
+            }
+
+            return $join.' '.str_replace('|', '', $field).$condition.$value;
+        }
+        else if (is_array($field)) {
+            $str = '';
+            foreach ($field as $key => $value) {
+                $str .= $this->parseCondition($key, $value, $join, $escape);
+                $join = '';
+            }
+            return $str;
+        }
+    }
+
+    /**
+     * Gets the query statistics.
+     */
+    public function getStats() {
+        $this->stats['total_time'] = 0;
+        $this->stats['num_queries'] = 0;
+        $this->stats['num_rows'] = 0;
+        $this->stats['num_changes'] = 0;
+
+        if (isset($this->stats['queries'])) {
+            foreach ($this->stats['queries'] as $query) {
+                $this->stats['total_time'] += $query['time'];
+                $this->stats['num_queries'] += 1;
+                $this->stats['num_rows'] += $query['rows'];
+                $this->stats['num_changes'] += $query['changes'];
+            }
+        }
+
+        $this->stats['avg_query_time'] =
+            $this->stats['total_time'] /
+            (float)(($this->stats['num_queries'] > 0) ? $this->stats['num_queries'] : 1);
+
+        return $this->stats;
+    }
+
+    /*** SQL Builder Methods ***/
 
     /**
      * Sets the table.
@@ -344,363 +470,241 @@ class Sparrow {
     }
 
     /**
-     * Gets the constructed SQL statement.
+     * Gets or sets the SQL statement.
      *
+     * @param string SQL statement
      * @return string SQL statement
      */
-    public function sql() {
+    public function sql($sql = null) {
+        if ($sql !== null) {
+            $this->sql = $sql;
+        }
         return $this->sql;
     }
 
-    /**
-     * Gets the min value for a specified field.
-     *
-     * @param string $field Field name
-     */
-    public function min() {
-        return $this->value(
-            'min_value',
-            $this->select('MIN('.$field.') min_value')->sql()
-        );
-    }
+    /*** Database Access Methods ***/
 
     /**
-     * Gets the max value for a specified field.
+     * Sets the database connection.
      *
-     * @param string $field Field name
+     * @param string|object $db Database connection string or object
      */
-    public function max() {
-        return $this->value(
-            'max_value',
-            $this->select('MAX('.$field.') max_value')->sql()
-        );
-    }
+    public function setDb($db) {
+        if (is_string($db)) {
+            $cfg = $this->parseConnection($db);
 
-    /**
-     * Gets the sum value for a specified field.
-     *
-     * @param string $field Field name
-     */
-    public function sum() {
-        return $this->value(
-            'sum_value',
-            $this->select('SUM('.$field.') sum_value')->sql()
-        );
-    }
-
-    /**
-     * Gets the average value for a specified field.
-     *
-     * @param string $field Field name
-     */
-    public function avg() {
-        return $this->value(
-            'avg_value',
-            $this->select('AVG('.$field.') avg_value')->sql()
-        ); 
-    }
-
-    /**
-     * Gets a count of records for a table.
-     *
-     * @param string $field Field name
-     */
-    public function count($field = null) {
-        return $this->value(
-            'num_rows',
-            $this->select('COUNT('.(empty($field) ? '*' : $field).') num_rows')->sql()
-        );
-    }
-
-    /**
-     * Parses a connection string into an object.
-     *
-     * @param string $connection Connection string
-     * @return object Connection information
-     */
-    public function parseConnection($connection) {
-        $url = @parse_url($connection);
-
-       if (!isset($url['host'])) {
-            throw new Exception('Database host must be specified in the connection string.');
-        }
-
-        $db = new stdClass;
-        $db->type = $url['scheme'];
-        $db->hostname = $url['host'];
-        $db->database = isset($url['path']) ? substr($url['path'],1) : null;
-        $db->username = isset($url['user']) ? $url['user'] : null;
-        $db->password = isset($url['pass']) ? $url['pass'] : null;
-        $db->port = isset($url['port']) ? $url['port'] : null;
-
-        return $db;
-    }
-
-    /**
-     * Parses a condition statement.
-     *
-     * @param string $field Database field
-     * @param string $value Condition value
-     * @param string $join Joining word
-     * @param boolean $escape Escape values setting
-     * @return string Condition as a string
-     */
-    protected function parseCondition($field, $value = null, $join = '', $escape = true) {
-        if (is_string($field)) {
-            if ($value === null) return $join.' '.trim($field);
-
-            list($field, $operator) = explode(' ', $field);
-          
-            if (!empty($operator)) {
-                switch ($operator) {
-                    case '%':
-                        $condition = ' LIKE ';
-                        break;
-                    case '!%':
-                        $condition = ' NOT LIKE ';
-                        break;
-                    case '@':
-                        $condition = ' IN ';
-                        break;
-                    case '!@':
-                        $condition = ' NOT IN ';
-                        break;
-                    default:
-                        $condition = $operator;
-                }
-            }
-            else {
-                $condition = '=';
-            }
-
-            if (empty($join)) { 
-                $join = ($field{0} == '|') ? ' OR' : ' AND';
-            }
-
-            if (is_array($value)) {
-                if (strpos($operator, '@') === false) $condition = ' IN ';
-                $value = '('.implode(',', array_map(array($this, 'quote'), $value)).')';
-            }
-            else {
-                $value = ($escape && !is_numeric($value)) ? $this->quote($value) : $value;
-            }
-
-            return $join.' '.str_replace('|', '', $field).$condition.$value;
-        }
-        else if (is_array($field)) {
-            $str = '';
-            foreach ($field as $key => $value) {
-                $str .= $this->parseCondition($key, $value, $join, $escape);
-                $join = '';
-            }
-            return $str;
-        }
-    }
-
-    /**
-     * Wraps quotes around a string and escapes the content.
-     *
-     * @param string $value String value
-     * @return string Quoted string
-     */
-    public function quote($value) {
-        return '\''.$this->escape($value).'\'';
-    }
-
-    /**
-     * Escapes special characters in a string.
-     *
-     * @param string $value Value to escape
-     * @return string Escaped value
-     */
-    public function escape($value) {
-        if ($this->db !== null) {
-            $db = $this->connect();
-
-            switch ($this->db->type) {
+            switch ($cfg->type) {
                 case 'mysqli':
-                    return $db->real_escape_string($value);
-                case 'mysql':
-                    return mysql_real_escape_string($value, $db);
-                case 'pgsql':
-                    return pg_escape_string($db, $value);
-                case 'sqlite':
-                    return sqlite_escape_string($value);
-                case 'sqlite3':
-                    return $db->escapeString($value); 
-            }            
-        }
-        return str_replace(
-            array('\\', "\0", "\n", "\r", "'", '"', "\x1a"),
-            array('\\\\', '\\0', '\\n', '\\r', "\\'", '\\"', '\\Z'),
-            $value
-        ); 
-    }
-
-    /**
-     * Connects to the database.
-     *
-     * @return object Database instance
-     */
-    public function connect() {
-        if ($this->db === null) {
-            throw new Exception('Database is not been defined.');
-        }
-
-        static $db;
-
-        if (!$db) {
-            switch ($this->db->type) {
-                case 'mysqli':
-                    $db = new mysqli(
-                        $this->db->hostname,
-                        $this->db->username,
-                        $this->db->password,
-                        $this->db->database
+                    $this->db = new mysqli(
+                        $cfg->hostname,
+                        $cfg->username,
+                        $cfg->password,
+                        $cfg->database
                     );
 
-                    if ($db->connect_error) {
-                        throw new Exception('Connection error: '.$db->connect_error);
+                    if ($this->db->connect_error) {
+                        throw new Exception('Connection error: '.$this->db->connect_error);
                     }
 
                     break;
 
                 case 'mysql':
-                    $db = mysql_connect(
-                        $this->db->hostname,
-                        $this->db->username,
-                        $this->db->password
+                    $this->db = mysql_connect(
+                        $cfg->hostname,
+                        $cfg->username,
+                        $cfg->password
                     );
 
-                    if (!$db) {
+                    if (!$this->db) {
                         throw new Exception('Connection error: '.mysql_error());
                     }
 
-                    mysql_select_db($this->db->database, $db);
+                    mysql_select_db($cfg->database, $this->db);
 
                     break;
 
                 case 'pgsql':
                     $str = sprintf(
                         'host=%s dbname=%s user=%s password=%s',
-                        $this->db->hostname,
-                        $this->db->database,
-                        $this->db->username,
-                        $this->db->password
+                        $cfg->hostname,
+                        $cfg->database,
+                        $cfg->username,
+                        $cfg->password
                     );
 
-                    $db = pg_connect($str);
+                    $this->db = pg_connect($str);
 
                     break;
 
                 case 'sqlite':
-                    $db = sqlite_open($this->db->database, 0666, $error);
+                    $this->db = sqlite_open($cfg->database, 0666, $error);
 
-                    if (!$db) {
+                    if (!$this->db) {
                         throw new Exception('Connection error: '.$error);
                     }
 
-                    return $db;
+                    break;
 
                 case 'sqlite3':
-                    return new SQLite3($this->db->database);
+                    $this->db = new SQLite3($cfg->database);
+            }
+
+            $this->db_type = $cfg->type;
+        }
+        else {
+            $type = $this->getDbType($db);
+
+            if ($type == null) {
+                throw new Exception('Database is not supported.');
+            }
+
+            $this->db = $db;
+            $this->db_type = $type;
+        }
+    }
+
+    /**
+     * Gets the database connection.
+     *
+     * @return object Database connection
+     */
+    public function getDb() {
+        return $this->db;
+    }
+
+    /**
+     * Gets the database type.
+     * 
+     * @param object|resource $db Database object or resource
+     * @return string type
+     */
+    public function getDbType($db) {
+        if (is_object($db)) {
+            return strtolower(get_class($db));
+        }
+        else if (is_resource($db)) {
+            switch (get_resource_type($db)) {
+                case 'mysql link':
+                    return 'mysql';
+
+                case 'sqlite database':
+                    return 'sqlite';
+
+                case 'pgsql link':
+                    return 'pgsql';
             }
         }
-
-        return $db;
     }
 
     /**
      * Executes a sql statement.
      *
-     * @param string $sql SQL statement
-     * @param object $db Database to run against
-     * @return mixed SQL results
+     * @param string $key Cache key
+     * @return object Query results object
      */
-    public function execute($sql = null) {
-        if ($sql === null) {
-            $sql = $this->sql();
+    public function execute($key = null) {
+        if (!$this->db) {
+            throw new Exception('Database is not defined.');
+        }
+
+        if ($key !== null) {
+            $result = $this->fetch($key);
+
+            if ($result !== null) {
+                $this->is_cached = true;
+                return $result;
+            }
         }
 
         $result = null;
 
+        $this->is_cached = false;
         $this->num_rows = 0;
         $this->affected_rows = 0;
         $this->insert_id = -1;
-        $this->last_query = $sql;
+        $this->last_query = $this->sql;
 
         if ($this->stats_enabled) {
+            if (empty($this->stats)) {
+                $this->stats = array(
+                    'queries' => array()
+                );
+            }
+
             $this->query_time = microtime(true);
         }
 
-        if (!empty($sql)) {
-            $db = $this->connect();
-
-            switch ($this->db->type) {
+        if (!empty($this->sql)) {
+            switch ($this->db_type) {
                 case 'mysqli':
-                    $result = $db->query($sql);
+                    $result = $this->db->query($this->sql);
 
                     if (!$result) {
-                        throw new Exception($db->error);
+                        throw new Exception($this->db->error);
                     }
 
                     $this->num_rows = $result->num_rows;
-                    $this->affected_rows = $db->affected_rows;
-                    $this->insert_id = $db->insert_id;
+                    $this->affected_rows = $this->db->affected_rows - $result->num_rows;
+                    $this->insert_id = $this->db->insert_id;
 
                     break;
 
                 case 'mysql':
-                    $result = mysql_query($sql, $db);
+                    $result = mysql_query($this->sql, $this->db);
 
                     if (!$result) {
                         throw new Exception(mysql_error());
                     }
 
                     $this->num_rows = mysql_num_rows($result);
-                    $this->affected_rows = mysql_affected_rows($db);
-                    $this->insert_id = mysql_insert_id($db);
+                    $this->affected_rows = mysql_affected_rows($this->db);
+                    $this->insert_id = mysql_insert_id($this->db);
+
+                    break;
 
                 case 'pgsql':
-                    $result = pg_query($db, $sql);
+                    $result = pg_query($this->db, $this->sql);
 
                     if (!$result) {
-                        throw new Exception(pg_last_error($db));
+                        throw new Exception(pg_last_error($this->db));
                     }
 
                     $this->num_rows = pg_num_rows($result);
                     $this->affected_rows = pg_affected_rows($result);
                     $this->insert_id = pg_last_oid($result);
 
+                    break;
+
                 case 'sqlite':
-                    $result = sqlite_query($db, $sql);
+                    $result = sqlite_query($this->db, $this->sql);
 
                     $this->num_rows = sqlite_num_rows($result);
-                    $this->affected_rows = sqlite_changes($db);
-                    $this->insert_id = sqlite_last_insert_rowid($db);
+                    $this->affected_rows = sqlite_changes($this->db);
+                    $this->insert_id = sqlite_last_insert_rowid($this->db);
 
-                    return $result;
+                    break;
 
                 case 'sqlite3':
-                    $result = $db->query($sql);
+                    $result = $this->db->query($this->sql);
 
                     if ($result === false) {
-                        throw new Exception($db->lastErrorMsg());
+                        throw new Exception($this->db->lastErrorMsg());
                     }
 
-                    $this->affected_rows = ($result) ? $db->changes() : 0;
-                    $this->insert_id = $db->lastInsertRowId();
+                    $this->affected_rows = ($result) ? $this->db->changes() : 0;
+                    $this->insert_id = $this->db->lastInsertRowId();
 
-                    return $result;
+                    break;
             }
         }
 
         if ($this->stats_enabled) {
             $time = microtime(true) - $this->query_time;
-            $this->stats['query_time'] += $time;
             $this->stats['queries'][] = array(
-                'query' => $sql,
-                'time' => $time
+                'query' => $this->sql,
+                'time' => $time,
+                'rows' => $this->num_rows,
+                'changes' => $this->affected_rows
             );
         }
 
@@ -710,21 +714,29 @@ class Sparrow {
     /**
      * Fetch multiple rows from a select query.
      *
-     * @param string $sql SQL statement
+     * @param string $key Cache key
+     * @return array Database rows
      */
-    public function many($sql = null, $key = null) {
-        if ($sql === null) {
-            $sql = (empty($this->sql)) ?
-                 $this->select()->sql() :
-                 $this->sql();
+    public function many($key = null) {
+        $this->caller = ($key !== null) ? __FUNCTION__ : null;
+
+        if (empty($this->sql)) {
+            $this->select();
         }
 
         $data = array();
 
-        if (!empty($sql)) {
-            $result = $this->execute($sql);
+        $result = $this->execute($key);
 
-            switch ($this->db->type) {
+        if ($this->is_cached) {
+            $data = $result;
+
+            if ($this->stats_enabled) {
+                $this->stats['cached'][$key] += 1;
+            }
+        }
+        else {
+            switch ($this->db_type) {
                 case 'mysqli':
                     $data = $result->fetch_all(MYSQLI_ASSOC);
                     $result->close();
@@ -758,45 +770,365 @@ class Sparrow {
             }
         }
 
+        if ($key !== null && $this->caller === __FUNCTION__) {
+            $this->store($key, $data);
+        }
+
         return $data;
     }
 
     /**
      * Fetch a single row from a select query.
      *
-     * @param string $sql SQL statement
+     * @param string $key Cache key
+     * @return array Database row
      */
-    public function one($sql = null, $key = null) {
-        $this->limit(1);
+    public function one($key = null) {
+        $this->caller = ($key !== null) ? __FUNCTION__ : null;
 
-        $data = $this->many($sql);
+        if (empty($this->sql)) {
+            $this->limit(1)->select();
+        }
 
-        return (!empty($data)) ? $data[0] : array();
+        $data = $this->many($key);
+
+        $row = (!empty($data)) ? $data[0] : array();
+
+        if ($key !== null && $this->caller === __FUNCTION__) {
+            $this->store($key, $row);
+        }
+
+        return $row;
     }
 
     /**
      * Fetch a value from a field.
      *
-     * @param string $sql SQL statement
+     * @param string $name Database field name
+     * @param string $key Cache key
+     * @return mixed Database row value
      */
-    public function value($field, $sql = null, $key = null) {
-        $row = $this->one($sql);
+    public function value($name, $key = null) {
+        $this->caller = ($key !== null) ? __FUNCTION__ : null;
 
-        return (!empty($row)) ? $row[$field] : null;
+        $row = $this->one($key);
+
+        $value = (!empty($row)) ? $row[$name] : null;
+
+        if ($key !== null && $value !== null && $this->caller === __FUNCTION__) {
+            $this->store($key, $value);
+        }
+
+        return $value;
     }
 
     /**
-     * Gets the database instance.
+     * Wraps quotes around a string and escapes the content.
+     *
+     * @param string $value String value
+     * @return string Quoted string
      */
-    public function getDB() {
-        return $this->connect();
+    public function quote($value) {
+        return '\''.$this->escape($value).'\'';
     }
 
     /**
-     * Gets the query statistics.
+     * Escapes special characters in a string.
+     *
+     * @param string $value Value to escape
+     * @return string Escaped value
      */
-    public function getStats() {
-        return $this->stats;
+    public function escape($value) {
+        if ($this->db !== null) {
+            switch ($this->db_type) {
+                case 'mysqli':
+                    return $this->db->real_escape_string($value);
+
+                case 'mysql':
+                    return mysql_real_escape_string($value, $this->db);
+
+                case 'pgsql':
+                    return pg_escape_string($this->db, $value);
+
+                case 'sqlite':
+                    return sqlite_escape_string($value);
+
+                case 'sqlite3':
+                    return $this->db->escapeString($value); 
+            }            
+        }
+
+        return str_replace(
+            array('\\', "\0", "\n", "\r", "'", '"', "\x1a"),
+            array('\\\\', '\\0', '\\n', '\\r', "\\'", '\\"', '\\Z'),
+            $value
+        ); 
+    }
+
+    /**
+     * Gets the min value for a specified field.
+     *
+     * @param string $field Field name
+     * @param string $key Cache key
+     */
+    public function min($key = null) {
+        return $this->value(
+            'min_value',
+            $this->select('MIN('.$field.') min_value')->sql(),
+            $key
+        );
+    }
+
+    /**
+     * Gets the max value for a specified field.
+     *
+     * @param string $field Field name
+     * @param string $key Cache key
+     */
+    public function max($key = null) {
+        return $this->value(
+            'max_value',
+            $this->select('MAX('.$field.') max_value')->sql(),
+            $key
+        );
+    }
+
+    /**
+     * Gets the sum value for a specified field.
+     *
+     * @param string $field Field name
+     * @param string $key Cache key
+     */
+    public function sum($key = null) {
+        return $this->value(
+            'sum_value',
+            $this->select('SUM('.$field.') sum_value')->sql(),
+            $key
+        );
+    }
+
+    /**
+     * Gets the average value for a specified field.
+     *
+     * @param string $field Field name
+     * @param string $key Cache key
+     */
+    public function avg($key = null) {
+        return $this->value(
+            'avg_value',
+            $this->select('AVG('.$field.') avg_value')->sql(),
+            $key
+        ); 
+    }
+
+    /**
+     * Gets a count of records for a table.
+     *
+     * @param string $field Field name
+     * @param string $key Cache key
+     */
+    public function count($field = '*', $key = null) {
+        return $this->value(
+            'num_rows',
+            $this->select('COUNT('.$field.') num_rows')->sql(),
+            $key
+        );
+    }
+
+    /*** Cache Methods ***/
+
+    /**
+     * Sets the cache connection.
+     *
+     * @param string|object $cache Cache connection string or object
+     */
+    public function setCache($cache) {
+        if (is_string($cache)) {
+            if ($cache{0} == '.' || $cache{0} == '/') {
+                $this->cache = $cache;
+                $this->cache_type = 'file';
+            }
+            else {
+                $cfg = $this->parseConnection($cache);
+
+                switch ($cfg->type) {
+                    case 'memcache':
+                        $this->cache = new Memcache;
+                        $this->cache->connect(
+                            $cfg->hostname,
+                            $cfg->port
+                        );
+                        break;
+
+                    case 'memcached':
+                        $this->cache = new Memcached;
+                        $this->cache->addServer(
+                            $cfg->hostname,
+                            $cfg->port
+                        );
+                        break;
+
+                    default:
+                        $this->cache = $cfg->type;
+                }
+
+                $this->cache_type = $cfg->type;
+            }
+        }
+        else if (is_object($cache)) {
+            $this->cache = $cache;
+            $this->cache_type = strtolower(get_class($cache));
+        }
+    }
+
+    /**
+     * Gets the cache instance.
+     *
+     * @return object Cache instance
+     */
+    public function getCache() {
+        return $this->cache;
+    }
+
+    /**
+     * Stores a value in the cache.
+     *
+     * @param string $key Cache key
+     * @param mixed $value Value to store
+     * @param int $expires Expiration time in seconds
+     */
+    public function store($key, $value, $expires = 0) {
+        switch ($this->cache_type) {
+            case 'memcached':
+                $this->cache->set($key, $value, $expires);
+                break;
+
+            case 'memcache':
+                $this->cache->set($key, $value, 0, $expires);
+                break;
+
+            case 'apc':
+                apc_store($key, $value, $expires);
+                break;
+
+            case 'xcache':
+                xcache_set($key, $value);
+                break;
+
+            case 'file':
+                $file = $this->cache.((substr($this->cache, -1) == '/') ? '' : '/').$file;
+                file_put_contents($file, serialize($value));
+                break;
+
+            default:
+                $this->cache[$key] = $value;
+        }
+    }
+
+    /**
+     * Fetches a value from the cache.
+     *
+     * @param string $key Cache key
+     * @return mixed Cached value
+     */
+    public function fetch($key) {
+        switch ($this->cache_type) {
+            case 'memcached':
+                return $this->cache->get($key);
+
+            case 'memcache':
+                return $this->cache->get($key);
+
+            case 'apc':
+                return apc_fetch($key);
+
+            case 'xcache':
+                return xcache_get($key);
+
+            case 'file':
+                $file = $this->cache.'/'.$file;
+                if (file_exists($file)) {
+                    return unserialize(file_get_contents($file));
+                }
+                break;
+
+            default:
+                return $this->cache[$key];
+        }
+    }
+
+    /**
+     * Clear a value from the cache.
+     *
+     * @param string $key Cache key
+     */
+    public function clear($key) {
+        switch ($this->cache_type) {
+            case 'memcached':
+                $this->cache->delete($key);
+                break;
+
+            case 'memcache':
+                $this->cache->delete($key);
+                break;
+
+            case 'apc':
+                apc_delete($key);
+                break;
+
+            case 'xcache':
+                xcache_unset($key);
+                break;
+
+            case 'file':
+                $file = $this->cache.'/'.$file;
+                if (file_exists($file)) {
+                    unlink($file);
+                }
+                break;
+
+            default:
+                $this->cache[$key] = $value;
+                break;
+        }
+    }
+
+    /**
+     * Flushes out the cache.
+     */
+    public function flush() {
+        switch ($this->cache_type) {
+            case 'memcached':
+                $this->cache->flush();
+                break;
+
+            case 'memcache':
+                $this->cache->flush();
+                break;
+
+            case 'apc':
+                apc_clear_cache();
+                break;
+
+            case 'xcache':
+                xcache_clear_cache();
+                break;
+
+            case 'file':
+                if ($handle = opendir($this->cache)) {
+                    while (false !== ($file = readdir($handle))) {
+                        if ($file != '.' && $file != '..') {
+                            unlink($this->cache.'/'.$file);
+                        }
+                    }
+                    closedir($handle);
+                }
+                break;
+
+            default:
+                $this->cache = array();
+                break;
+        }
     }
 }
 ?>
