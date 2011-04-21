@@ -3,7 +3,7 @@
  * Sparrow: A simple database toolkit.
  *
  * @copyright Copyright (c) 2011, Mike Cao <mike@mikecao.com>
- * @license http://www.opensource.org/licenses/mit-license.php
+ * @license   MIT, http://www.opensource.org/licenses/mit-license.php
  */
 class Sparrow {
     protected $table;
@@ -181,6 +181,7 @@ class Sparrow {
         $this->limit = '';
         $this->offset = '';
         $this->sql = '';
+        $this->caller = null;
 
         return $this;
     }
@@ -578,7 +579,7 @@ class Sparrow {
      * Gets the database type.
      * 
      * @param object|resource $db Database object or resource
-     * @return string type
+     * @return string Database type
      */
     public function getDbType($db) {
         if (is_object($db)) {
@@ -720,7 +721,9 @@ class Sparrow {
      * @return array Database rows
      */
     public function many($key = null) {
-        $this->caller = ($key !== null) ? __FUNCTION__ : null;
+        if (!$this->caller) {
+            $this->caller = ($key !== null) ? __FUNCTION__ : null;
+        }
 
         if (empty($this->sql)) {
             $this->select();
@@ -740,7 +743,14 @@ class Sparrow {
         else {
             switch ($this->db_type) {
                 case 'mysqli':
-                    $data = $result->fetch_all(MYSQLI_ASSOC);
+                    if (function_exists('mysqli_fetch_all')) {
+                        $data = $result->fetch_all(MYSQLI_ASSOC);
+                    }
+                    else {
+                        while ($row = $result->fetch_assoc()) {
+                            $data[] = $row;
+                        }
+                    }
                     $result->close();
                     break;
            
@@ -786,7 +796,9 @@ class Sparrow {
      * @return array Database row
      */
     public function one($key = null) {
-        $this->caller = ($key !== null) ? __FUNCTION__ : null;
+        if (!$this->caller) {
+            $this->caller = ($key !== null) ? __FUNCTION__ : null;
+        }
 
         if (empty($this->sql)) {
             $this->limit(1)->select();
@@ -811,7 +823,9 @@ class Sparrow {
      * @return mixed Database row value
      */
     public function value($name, $key = null) {
-        $this->caller = ($key !== null) ? __FUNCTION__ : null;
+        if (!$this->caller) {
+            $this->caller = ($key !== null) ? __FUNCTION__ : null;
+        }
 
         $row = $this->one($key);
 
@@ -1018,7 +1032,7 @@ class Sparrow {
                 break;
 
             case 'file':
-                $file = $this->cache.((substr($this->cache, -1) == '/') ? '' : '/').$file;
+                $file = $this->cache.'/'.$key;
                 file_put_contents($file, serialize($value));
                 break;
 
@@ -1048,7 +1062,7 @@ class Sparrow {
                 return xcache_get($key);
 
             case 'file':
-                $file = $this->cache.'/'.$file;
+                $file = $this->cache.'/'.$key;
                 if (file_exists($file)) {
                     return unserialize(file_get_contents($file));
                 }
@@ -1057,6 +1071,7 @@ class Sparrow {
             default:
                 return $this->cache[$key];
         }
+        return null;
     }
 
     /**
