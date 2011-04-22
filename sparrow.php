@@ -1203,13 +1203,6 @@ class Sparrow {
 
         return $this;
     }
-
-    /**
-     * Populates an object with data.
-     */
-    public function fill() {
-
-    }
    
     /**
      * Finds and populates an object.
