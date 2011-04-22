@@ -480,7 +480,7 @@ You can also pass in a cache object.
 
     $db->setCache($cache);
 
-Now you can pass a cache key to the query functions and Sparrow will try to fetch from the cache before
+You can then pass a cache key to the query functions and Sparrow will try to fetch from the cache before
 executing the query. If there is a cache miss, Sparrow will execute the query and store the results
 using the specified cache key.
 
@@ -521,7 +521,7 @@ You can manipulate the cache data directly as well. To cache a value use the `st
 
     $db->store('id', 123);
 
-To get a cached value use the `fetch` function.
+To retrieve a cached value use the `fetch` function.
 
     $id = $db->fetch('id');
 
@@ -532,6 +532,60 @@ To delete a cached value use the `clear` function.
 To completely empty the cache use the `flush` function.
 
     $db->flush();
+
+## Using Objects
+
+Sparrow also provides some functionality for working with objects. Just define a class with public properties to
+represent database fields and static variables to describe the database relationship.
+
+    class User {
+        // Class properties
+        public $id;
+        public $name;
+        public $email;
+
+        // Class configuration
+        static $table = 'user';
+        static $id_field = 'id';
+        static $name_field = 'name';
+    }
+
+To load the object use the `load` function and pass in the object.
+
+    $user = new User();
+
+    $db->load($user);
+
+You can also pass in a class name and a new object will be created for you.
+
+    $db->load('User');
+
+After loading your object, you can then use the `find` method to populate the object. If you pass in an int
+it will search using the id field.
+
+    $user = $db->find(1);
+
+This will execute:
+
+    SELECT * FROM user WHERE id = 1
+
+If you pass in a string it will search using the name field.
+
+    $user = $db->find('bob');
+
+This will execute:
+
+    SELECT * FROM user WHERE name = 'bob';
+
+If you pass in an array it will use the fields specified in the array.
+
+    $user = $db->find(
+        array('email' => 'bob@aol.com')
+    );
+
+This will execute:
+
+    SELECT * FROM user WHERE email = 'bob@aol.com'
 
 ## Statistics
 
@@ -552,7 +606,7 @@ with individual query times.
         [0]=>
         array(4) {
           ["query"]=>
-              string(38) "SELECT * FROM user WHERE uid=1 LIMIT 1"
+              string(38) "SELECT * FROM user WHERE uid=1"
           ["time"]=>
               float(0.00016617774963379)
           ["rows"]=>
@@ -563,7 +617,7 @@ with individual query times.
         [1]=>
         array(4) {
           ["query"]=>
-              string(39) "SELECT * FROM user WHERE uid=10 LIMIT 1"
+              string(39) "SELECT * FROM user WHERE uid=10"
           ["time"]=>
               float(0.00026392936706543)
           ["rows"]=>
@@ -577,7 +631,7 @@ with individual query times.
       ["num_queries"]=>
           int(2)
       ["num_rows"]=>
-          int(1)
+          int(2)
       ["num_changes"]=>
           int(0)
       ["avg_query_time"]=>

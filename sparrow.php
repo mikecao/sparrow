@@ -1147,5 +1147,117 @@ class Sparrow {
                 break;
         }
     }
+
+    /*** Object Methods ***/
+
+    /**
+     * Sets the class.
+     *
+     * @param string|object $class Class name or instance
+     * @param array $config Class configuration
+     */
+    public function load($class) {
+        if (is_string($class)) {
+            $this->class = new $class;
+        }
+        else if (is_object($class)) {
+            $this->class = $class;
+        }
+
+        return $this;
+    }
+   
+    /**
+     * Finds and populates an object.
+     *
+     * @param int|string|array Search value
+     * @param string $key Cache key
+     * @return object Populated object
+     */
+    public function find($value, $key = null) {
+        $properties = $this->getProperties();
+
+        $this->from($properties->table);
+
+        if (is_int($value) && property_exists($properties, 'id_field')) {
+            $this->where($properties->id_field, $value);
+        }
+        else if (is_string($value) && property_exists($properties, 'name_field') {
+            $this->where($properties->name_field, $value);
+        }
+        else if (is_array($value)) {
+            $this->where($value);
+        }
+
+        $data = $this->one($key);
+
+        foreach ($data as $key => $value) {
+            if (property_exists($this->class, $key)) {
+                $this->class->$key = $value;
+            }
+        }
+
+        return $this->class;
+    }
+
+    /**
+     * Saves an object to the database.
+     *
+     * @param array $fields Select database fields to save
+     */
+    public function save($fields = null) {
+        $properties = $this->getProperties();
+
+        $this->from($this->class->table);
+
+        $data = get_object_vars($this->class);
+        $id = $this->class->{$properties->id_field};
+
+        if ($id === null) {
+            $this->insert($data)
+                ->execute();
+        }
+        else {
+            if ($fields !== null) {
+                $keys = array_flip($fields);
+                $data = array_intersect_key($data, $keys);
+            }
+
+            unset($data[$properties->id_field]);
+
+            $this->where($properties->id_field, $id)
+                ->update($data)
+                ->execute();
+        }
+    }
+
+    /**
+     * Gets the class instance.
+     *
+     * @return object Class instance
+     */
+    public function getObject() {
+        return $this->class->obj;
+    }
+
+    /**
+     * Gets class properties.
+     *
+     * @return object Class properties
+     */
+    public function getProperties() {
+        static $properties = array();
+
+        if (!$this->class) return array();
+
+        $class = get_class($this->class);
+
+        if (!isset($properties[$class])) {
+            $reflection = new ReflectionClass($this->class);
+            $properties[$class] = (object)$reflection->getStaticProperties(); 
+        }
+
+        return $properties[$class];
+    }
 }
 ?>
