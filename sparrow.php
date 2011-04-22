@@ -24,6 +24,7 @@ class Sparrow {
     protected $stats;
     protected $query_time;
     protected $caller;
+    protected $class;
 
     public $last_query;
     public $num_rows;
@@ -1182,7 +1183,7 @@ class Sparrow {
         if (is_int($value) && property_exists($properties, 'id_field')) {
             $this->where($properties->id_field, $value);
         }
-        else if (is_string($value) && property_exists($properties, 'name_field') {
+        else if (is_string($value) && property_exists($properties, 'name_field')) {
             $this->where($properties->name_field, $value);
         }
         else if (is_array($value)) {
