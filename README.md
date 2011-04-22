@@ -550,32 +550,40 @@ represent database fields and static variables to describe the database relation
         static $name_field = 'name';
     }
 
-To load the object use the `load` function and pass in the object.
+### Conventions
+
+The `table` variable must be defined.
+The `id_field` must be an auto-incrementing primary key in the database.
+The `name_field` is optional.
+
+### Loading Objects
+
+To define the object use the `using` function and pass in the object.
 
     $user = new User();
 
-    $db->load($user);
+    $db->using($user);
 
 You can also pass in a class name and a new object will be created for you.
 
-    $db->load('User');
+    $db->using('User');
 
-After loading your object, you can then use the `find` method to populate the object. If you pass in an int
+After setting your object, you can then use the `find` method to populate the object. If you pass in an int
 it will search using the id field.
 
-    $user = $db->find(1);
+    $user = $db->find(123);
 
 This will execute:
 
-    SELECT * FROM user WHERE id = 1
+    SELECT * FROM user WHERE id = 123
 
 If you pass in a string it will search using the name field.
 
-    $user = $db->find('bob');
+    $user = $db->find('Bob');
 
 This will execute:
 
-    SELECT * FROM user WHERE name = 'bob';
+    SELECT * FROM user WHERE name = 'Bob';
 
 If you pass in an array it will use the fields specified in the array.
 
@@ -586,6 +594,62 @@ If you pass in an array it will use the fields specified in the array.
 This will execute:
 
     SELECT * FROM user WHERE email = 'bob@aol.com'
+
+Note that the `find` method will always return a single object instance, even if the where
+condition matches multiple records.
+
+### Saving Objects
+
+To save an object, just populate your object properties and use the `save` function.
+
+    $user = new User();
+    $user->name = 'Bob';
+    $user->email = 'bob@aol.com';
+
+    $db->using($user)->save();
+
+This will execute:
+
+    INSERT INTO user (name, email) VALUES ('Bob', 'bob@aol.com')
+
+To update an object, use the `save` function.
+You will need to populate the field defined by the `id_field` property.
+
+    // Fetch the object from database
+    $user = $db->find(123);
+
+    // Update the object
+    $user->name = 'Fred';
+
+    // Update the database
+    $db->save();
+
+This will execute:
+
+    UPDATE user SET name = 'Fred' WHERE id = 123
+
+### Deleting Objects
+
+To delete an object, use the `remove` function.
+
+    // Fetch the object from database
+    $db->find(123);
+
+    // Delete from the database
+    $db->remove();
+
+If you already have an object, you can pass it in directly and then call the function.
+
+    $db->using($user1)->save();
+    $db->using($user2)->remove();
+
+### Direct Access
+
+To access the class object directly, use the `getObject` method.
+
+    $db->using('User')->find(123);
+
+    $user = $db->getObject();
 
 ## Statistics
 
@@ -637,6 +701,10 @@ with individual query times.
       ["avg_query_time"]=>
           float(0.00021505355834961)
     }
+
+## Requirements
+
+Sparrow requires PHP 5.1 or greater.
 
 ## License
 

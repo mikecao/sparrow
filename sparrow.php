@@ -32,6 +32,7 @@ class Sparrow {
     public $affected_rows;
     public $is_cached = false;
     public $stats_enabled = false;
+    public $show_sql = false;
 
     /**
      * Class constructor.
@@ -164,6 +165,24 @@ class Sparrow {
         return $this->stats;
     }
 
+    /**
+     * Checks whether the table property has been set.
+     */
+    public function checkTable() {
+        if (!$this->table) {
+            throw new Exception('Table is not defined.');
+        }
+    }
+
+    /**
+     * Checks whether the class property has been set.
+     */
+    public function checkClass() {
+        if (!$this->class) {
+            throw new Exception('Class is not defined.');
+        }
+    }
+
     /*** SQL Builder Methods ***/
 
     /**
@@ -249,7 +268,7 @@ class Sparrow {
      * @param string $value A field value to compare to
      */
     public function where($field, $value = null) {
-        $join = (empty($this->where)) ? ' WHERE' : '';
+        $join = (empty($this->where)) ? 'WHERE' : '';
         $this->where .= $this->parseCondition($field, $value, $join);
 
         return $this;
@@ -280,7 +299,7 @@ class Sparrow {
      * @param string $direction Sort direction 
      */
     public function orderBy($field, $direction = 'ASC') {
-        $join = (empty($this->order)) ? ' ORDER BY' : ',';
+        $join = (empty($this->order)) ? 'ORDER BY' : ',';
 
         if (is_array($field)) {
             foreach ($field as $key => $value) {
@@ -304,7 +323,7 @@ class Sparrow {
      * @param string|array $field Field name or array of field names
      */
     public function groupBy($field) {
-        $join = (empty($this->order)) ? ' GROUP BY' : ',';
+        $join = (empty($this->order)) ? 'GROUP BY' : ',';
         $fields = (is_array($field)) ? implode(',', $field) : $field;
 
         $this->groups .= $join.' '.$fields;
@@ -319,7 +338,7 @@ class Sparrow {
      * @param string $value A field value to compare to
      */
     public function having($field, $value = null) {
-        $join = (empty($this->having)) ? ' HAVING' : '';
+        $join = (empty($this->having)) ? 'HAVING' : '';
         $this->having .= $this->parseCondition($field, $value, $join);
 
         return $this;
@@ -333,7 +352,7 @@ class Sparrow {
      */
     public function limit($limit, $offset = null) {
         if ($limit !== null) {
-            $this->limit = ' LIMIT '.$limit;
+            $this->limit = 'LIMIT '.$limit;
         }
         if ($offset !== null) {
             $this->offset($offset);
@@ -350,7 +369,7 @@ class Sparrow {
      */
     public function offset($offset, $limit = null) {
         if ($offset !== null) {
-            $this->offset = ' OFFSET '.$offset;
+            $this->offset = 'OFFSET '.$offset;
         }
         if ($limit !== null) {
             $this->limit($limit);
@@ -363,7 +382,7 @@ class Sparrow {
      * Sets the distinct keywork for a query.
      */
     public function distinct($value = true) {
-        $this->distinct = ($value) ? 'DISTINCT ' : '';
+        $this->distinct = ($value) ? 'DISTINCT' : '';
 
         return $this;
     }
@@ -375,26 +394,25 @@ class Sparrow {
      * @return string SQL statement
      */
     public function select($fields = '*', $limit = null, $offset = null) {
-        if (empty($this->table)) return $this;
+        $this->checkTable();
 
         $fields = (is_array($fields)) ? implode(',', $fields) : $fields;
         $this->limit($limit);
         $this->offset($offset);
 
-        $sql = 'SELECT '.
-            $this->distinct.
-            $fields.
-            ' FROM '.
-            $this->table.
-            $this->joins.
-            $this->where.
-            $this->groups.
-            $this->having.
-            $this->order.
-            $this->limit.
-            $this->offset;
-
-        $this->sql = $sql;
+        $this->sql = sprintf(
+            'SELECT %s %s FROM %s %s %s %s %s %s %s %s',
+            $this->distinct,
+            $fields,
+            $this->table,
+            $this->joins,
+            $this->where,
+            $this->groups,
+            $this->having,
+            $this->order,
+            $this->limit,
+            $this->offset
+        );
 
         return $this;
     }
@@ -406,7 +424,9 @@ class Sparrow {
      * @return string SQL statement
      */
     public function insert(array $data) {
-        if (empty($this->table) || empty($data)) return $this;
+        $this->checkTable();
+
+        if (empty($data)) return $this;
 
         $keys = implode(',', array_keys($data));
         $values = implode(',', array_values(
@@ -416,13 +436,12 @@ class Sparrow {
             )
         ));
 
-        $sql = 'INSERT INTO '.
-            $this->table.
-            '('.$keys.')'.
-            ' VALUES '.
-            '('.$values.')';
-
-        $this->sql = $sql;
+        $this->sql = sprintf(
+            'INSERT INTO %s (%s) VALUES (%s)',
+            $this->table,
+            $keys,
+            $values
+        );
 
         return $this;
     }
@@ -434,20 +453,21 @@ class Sparrow {
      * @return string SQL statement
      */
     public function update(array $data) {
-        if (empty($this->table) || empty($data)) return $this;
+        $this->checkTable();
+
+        if (empty($data)) return $this;
 
         $values = array();
         foreach ($data as $key => $value) {
             $values[] = $key.'='.$this->quote($value);
         }
 
-        $sql = 'UPDATE '.
-            $this->table.
-            ' SET '.
-            implode(',', $values).
-            $this->where;
-
-        $this->sql = $sql;
+        $this->sql = sprintf(
+            'UPDATE %s SET %s %s',
+            $this->table,
+            implode(',', $values),
+            $this->where
+        );
 
         return $this;
     }
@@ -456,17 +476,17 @@ class Sparrow {
      * Builds a delete query.
      */
     public function delete($where = null) {
-        if (empty($this->table)) return $this;
+        $this->checkTable();
 
         if ($where !== null) {
             $this->where($where);
         }
 
-        $sql = 'DELETE FROM '.
-            $this->table.
-            $this->where;
-
-        $this->sql = $sql;
+        $this->sql = sprintf(
+            'DELETE FROM %s %s',
+            $this->table,
+            $this->where
+        );
 
         return $this;
     }
@@ -639,17 +659,20 @@ class Sparrow {
         }
 
         if (!empty($this->sql)) {
+            $error = null;
+
             switch ($this->db_type) {
                 case 'mysqli':
                     $result = $this->db->query($this->sql);
 
                     if (!$result) {
-                        throw new Exception($this->db->error);
+                        $error = $this->db->error;
                     }
-
-                    $this->num_rows = $result->num_rows;
-                    $this->affected_rows = $this->db->affected_rows - $result->num_rows;
-                    $this->insert_id = $this->db->insert_id;
+                    else {
+                        $this->num_rows = $result->num_rows;
+                        $this->affected_rows = $this->db->affected_rows - $result->num_rows;
+                        $this->insert_id = $this->db->insert_id;
+                    }
 
                     break;
 
@@ -657,12 +680,13 @@ class Sparrow {
                     $result = mysql_query($this->sql, $this->db);
 
                     if (!$result) {
-                        throw new Exception(mysql_error());
+                        $error = mysql_error();
                     }
-
-                    $this->num_rows = mysql_num_rows($result);
-                    $this->affected_rows = mysql_affected_rows($this->db);
-                    $this->insert_id = mysql_insert_id($this->db);
+                    else {
+                        $this->num_rows = mysql_num_rows($result);
+                        $this->affected_rows = mysql_affected_rows($this->db);
+                        $this->insert_id = mysql_insert_id($this->db);
+                    }
 
                     break;
 
@@ -670,21 +694,24 @@ class Sparrow {
                     $result = pg_query($this->db, $this->sql);
 
                     if (!$result) {
-                        throw new Exception(pg_last_error($this->db));
+                       $error = pg_last_error($this->db);
                     }
-
-                    $this->num_rows = pg_num_rows($result);
-                    $this->affected_rows = pg_affected_rows($result);
-                    $this->insert_id = pg_last_oid($result);
+                    else {
+                        $this->num_rows = pg_num_rows($result);
+                        $this->affected_rows = pg_affected_rows($result);
+                        $this->insert_id = pg_last_oid($result);
+                    }
 
                     break;
 
                 case 'sqlite':
-                    $result = sqlite_query($this->db, $this->sql);
+                    $result = sqlite_query($this->db, $this->sql, SQLITE_ASSOC, $error);
 
-                    $this->num_rows = sqlite_num_rows($result);
-                    $this->affected_rows = sqlite_changes($this->db);
-                    $this->insert_id = sqlite_last_insert_rowid($this->db);
+                    if ($result !== false) {
+                        $this->num_rows = sqlite_num_rows($result);
+                        $this->affected_rows = sqlite_changes($this->db);
+                        $this->insert_id = sqlite_last_insert_rowid($this->db);
+                    }
 
                     break;
 
@@ -692,13 +719,22 @@ class Sparrow {
                     $result = $this->db->query($this->sql);
 
                     if ($result === false) {
-                        throw new Exception($this->db->lastErrorMsg());
+                        $error = $this->db->lastErrorMsg();
+                    }
+                    else {
+                        $this->num_rows = 0;
+                        $this->affected_rows = ($result) ? $this->db->changes() : 0;
+                        $this->insert_id = $this->db->lastInsertRowId();
                     }
 
-                    $this->affected_rows = ($result) ? $this->db->changes() : 0;
-                    $this->insert_id = $this->db->lastInsertRowId();
-
                     break;
+            }
+
+            if ($error !== null) {
+                if ($this->show_sql) {
+                    $error .= "\nSQL: ".$this->sql;
+                }
+                throw new Exception('Database error: '.$error);
             }
         }
 
@@ -1157,7 +1193,7 @@ class Sparrow {
      * @param string|object $class Class name or instance
      * @param array $config Class configuration
      */
-    public function load($class) {
+    public function using($class) {
         if (is_string($class)) {
             $this->class = new $class;
         }
@@ -1166,6 +1202,13 @@ class Sparrow {
         }
 
         return $this;
+    }
+
+    /**
+     * Populates an object with data.
+     */
+    public function fill() {
+
     }
    
     /**
@@ -1176,6 +1219,8 @@ class Sparrow {
      * @return object Populated object
      */
     public function find($value, $key = null) {
+        $this->checkClass();        
+
         $properties = $this->getProperties();
 
         $this->from($properties->table);
@@ -1190,11 +1235,13 @@ class Sparrow {
             $this->where($value);
         }
 
-        $data = $this->one($key);
+        if (!empty($this->where)) {
+            $data = $this->one($key);
 
-        foreach ($data as $key => $value) {
-            if (property_exists($this->class, $key)) {
-                $this->class->$key = $value;
+            foreach ($data as $key => $value) {
+                if (property_exists($this->class, $key)) {
+                    $this->class->$key = $value;
+                }
             }
         }
 
@@ -1207,16 +1254,22 @@ class Sparrow {
      * @param array $fields Select database fields to save
      */
     public function save($fields = null) {
+        $this->checkClass();        
+
         $properties = $this->getProperties();
 
-        $this->from($this->class->table);
+        $this->from($properties->table);
 
         $data = get_object_vars($this->class);
         $id = $this->class->{$properties->id_field};
 
+        unset($data[$properties->id_field]);
+
         if ($id === null) {
             $this->insert($data)
                 ->execute();
+
+            $this->class->{$properties->id_field} = $this->insert_id;
         }
         else {
             if ($fields !== null) {
@@ -1224,21 +1277,40 @@ class Sparrow {
                 $data = array_intersect_key($data, $keys);
             }
 
-            unset($data[$properties->id_field]);
-
             $this->where($properties->id_field, $id)
                 ->update($data)
+                ->execute();
+        }
+
+        return $this->class;
+    }
+
+    /**
+     * Removes an object from the database.
+     */
+    public function remove() {
+        $this->checkClass();        
+
+        $properties = $this->getProperties();
+
+        $this->from($properties->table);
+
+        $id = $this->class->{$properties->id_field};
+
+        if ($id !== null) {
+            $this->where($properties->id_field, $id)
+                ->delete()
                 ->execute();
         }
     }
 
     /**
-     * Gets the class instance.
+     * Gets the class object instance.
      *
-     * @return object Class instance
+     * @return object Class object instance
      */
     public function getObject() {
-        return $this->class->obj;
+        return $this->class;
     }
 
     /**
@@ -1254,8 +1326,16 @@ class Sparrow {
         $class = get_class($this->class);
 
         if (!isset($properties[$class])) {
+            static $defaults = array(
+                'table' => null,
+                'id_field' => null,
+                'name_field' => null
+            );
+
             $reflection = new ReflectionClass($this->class);
-            $properties[$class] = (object)$reflection->getStaticProperties(); 
+            $config = $reflection->getStaticProperties();
+
+            $properties[$class] = (object)array_merge($defaults, $config);
         }
 
         return $properties[$class];
