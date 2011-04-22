@@ -552,9 +552,9 @@ represent database fields and static variables to describe the database relation
 
 ### Conventions
 
-The `table` variable must be defined.
-The `id_field` must be an auto-incrementing primary key in the database.
-The `name_field` is optional.
+* The `table` variable must be defined.
+* The `id_field` must be an auto-incrementing primary key in the database.
+* The `name_field` is optional.
 
 ### Loading Objects
 
@@ -615,7 +615,7 @@ This will execute:
 To update an object, use the `save` function.
 You will need to populate the field defined by the `id_field` property.
 
-    // Fetch the object from database
+    // Fetch the object from the database
     $user = $db->find(123);
 
     // Update the object
@@ -623,6 +623,15 @@ You will need to populate the field defined by the `id_field` property.
 
     // Update the database
     $db->save();
+
+This will execute:
+
+    UPDATE user SET name = 'Fred', email = 'bob@aol.com' WHERE id = 123
+
+By default, all of the object properties will be included in the update. To specify only specific fields, pass in
+an array to the `save` function.
+
+    $db->save(array('name'));
 
 This will execute:
 
