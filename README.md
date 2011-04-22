@@ -569,7 +569,7 @@ You can also pass in a class name and a new object will be created for you.
     $db->using('User');
 
 After setting your object, you can then use the `find` method to populate the object. If you pass in an int
-it will search using the id field.
+Sparrow will search using the id field.
 
     $user = $db->find(123);
 
@@ -577,7 +577,7 @@ This will execute:
 
     SELECT * FROM user WHERE id = 123
 
-If you pass in a string it will search using the name field.
+If you pass in a string Sparrow will search using the name field.
 
     $user = $db->find('Bob');
 
@@ -585,7 +585,7 @@ This will execute:
 
     SELECT * FROM user WHERE name = 'Bob';
 
-If you pass in an array it will use the fields specified in the array.
+If you pass in an array Sparrow will use the fields specified in the array.
 
     $user = $db->find(
         array('email' => 'bob@aol.com')
@@ -650,6 +650,13 @@ To access the class object directly, use the `getObject` method.
     $db->using('User')->find(123);
 
     $user = $db->getObject();
+
+## Debugging
+
+When Sparrow encounters an error while executing a query, it will raise an exception with the database
+error message. If you want to display the generated SQL along with the error message, set the `show_sql` property.
+
+    $db->show_sql = true;
 
 ## Statistics
 
