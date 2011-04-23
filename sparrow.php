@@ -194,15 +194,10 @@ class Sparrow {
         }
     }
 
-    /*** SQL Builder Methods ***/
-
     /**
-     * Sets the table.
-     *
-     * @param string $table Table name
+     * Resets class properties.
      */
-    public function from($table) {
-        $this->table = $table;
+    public function reset() {
         $this->where = '';
         $this->joins = '';
         $this->order = '';
@@ -212,6 +207,21 @@ class Sparrow {
         $this->limit = '';
         $this->offset = '';
         $this->sql = '';
+    }
+
+    /*** SQL Builder Methods ***/
+
+    /**
+     * Sets the table.
+     *
+     * @param string $table Table name
+     * @param boolean $reset Reset class properties
+     */
+    public function from($table, $reset = true) {
+        $this->table = $table;
+        if ($reset) {
+            $this->reset();
+        }
         $this->caller = null;
 
         return $this;
@@ -1234,6 +1244,8 @@ class Sparrow {
             $this->class = get_class($class);
         }
 
+        $this->reset();
+
         return $this;
     }
 
@@ -1266,7 +1278,7 @@ class Sparrow {
 
         $properties = $this->getProperties();
 
-        $this->from($properties->table);
+        $this->from($properties->table, false);
 
         if (is_int($value) && property_exists($properties, 'id_field')) {
             $this->where($properties->id_field, $value);
@@ -1337,8 +1349,6 @@ class Sparrow {
      */
     public function remove($object) {
         $this->using($object);
-
-        $this->checkClass();        
 
         $properties = $this->getProperties();
 
