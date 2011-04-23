@@ -643,11 +643,9 @@ This will execute:
 
 To delete an object, use the `remove` function.
 
-    // Fetch the object from database
-    $db->find(123);
+    $user = $db->find(123);
 
-    // Delete from the database
-    $db->remove();
+    $db->remove($user);
 
 ### Advanced Finding
 
