@@ -550,21 +550,15 @@ represent database fields and static variables to describe the database relation
         static $name_field = 'name';
     }
 
-### Conventions
+### Class Configuration
 
-* The `table` variable must be defined.
-* The `id_field` must be an auto-incrementing primary key in the database.
-* The `name_field` is optional.
+* The `table` property represents the database table. This property is required. 
+* The `id_field` property represents the auto-incrementing identity field in the table. This property is required for saving and deleting records. 
+* The `name_field` property is used for finding records by name. This property is optional.
 
 ### Loading Objects
 
-To define the object use the `using` function and pass in the object.
-
-    $user = new User();
-
-    $db->using($user);
-
-You can also pass in a class name and a new object will be created for you.
+To define the object use the `using` function and pass in the class name.
 
     $db->using('User');
 
@@ -606,36 +600,44 @@ To save an object, just populate your object properties and use the `save` funct
     $user->name = 'Bob';
     $user->email = 'bob@aol.com';
 
-    $db->using($user)->save();
+    $db->save($user);
 
 This will execute:
 
     INSERT INTO user (name, email) VALUES ('Bob', 'bob@aol.com')
 
-To update an object, use the `save` function.
-You will need to populate the field defined by the `id_field` property.
+To update an object, use the `save` function with the `id_field` property populated.
 
-    // Fetch the object from the database
+    $user = new User();
+    $user->id = 123;
+    $user->name = 'Bob';
+    $user->email = 'bob@aol.com';
+
+    $db->save($user);
+
+This will execute:
+
+    UPDATE user SET name = 'Bob', email = 'bob@aol.com' WHERE id = 123
+
+So to update an existing record, just fetch an object from the database, update its properties, then save it.
+
+    // Fetch an object from the database
     $user = $db->find(123);
 
     // Update the object
     $user->name = 'Fred';
 
     // Update the database
-    $db->save();
+    $db->save($user);
+
+By default, all of the object's properties will be included in the update. To specify only specific fields, pass in
+an additional array of fields to the `save` function.
+
+    $db->save($user, array('email'));
 
 This will execute:
 
-    UPDATE user SET name = 'Fred', email = 'bob@aol.com' WHERE id = 123
-
-By default, all of the object properties will be included in the update. To specify only specific fields, pass in
-an array to the `save` function.
-
-    $db->save(array('name'));
-
-This will execute:
-
-    UPDATE user SET name = 'Fred' WHERE id = 123
+    UPDATE user SET email = 'bob@aol.com' WHERE id = 123
 
 ### Deleting Objects
 
@@ -646,26 +648,6 @@ To delete an object, use the `remove` function.
 
     // Delete from the database
     $db->remove();
-
-If you already have an object, you can pass it in directly and then call the function.
-
-    $db->using($user1)->save();
-    $db->using($user2)->remove();
-
-### Direct Access
-
-To access the class object directly, use the `getObject` method.
-
-    $db->using('User')->find(123);
-
-    $user = $db->getObject();
-
-## Debugging
-
-When Sparrow encounters an error while executing a query, it will raise an exception with the database
-error message. If you want to display the generated SQL along with the error message, set the `show_sql` property.
-
-    $db->show_sql = true;
 
 ## Statistics
 
@@ -717,6 +699,13 @@ with individual query times.
       ["avg_query_time"]=>
           float(0.00021505355834961)
     }
+
+## Debugging
+
+When Sparrow encounters an error while executing a query, it will raise an exception with the database
+error message. If you want to display the generated SQL along with the error message, set the `show_sql` property.
+
+    $db->show_sql = true;
 
 ## Requirements
 

@@ -52,13 +52,24 @@ class Sparrow {
     /*** Core Methods ***/
 
     /**
+     * Joins string tokens into a SQL statement.
+     *
+     * @param string $sql SQL statement
+     * @param string $input Input string to append
+     * @return string New SQL statement
+     */
+    public function build($sql, $input) {
+        return (strlen($input) > 0) ? ($sql.' '.$input) : $sql;
+    }
+
+    /**
      * Parses a connection string into an object.
      *
      * @param string $connection Connection string
      * @return object Connection information
      */
     public function parseConnection($connection) {
-        $url = @parse_url($connection);
+        $url = parse_url($connection);
 
         if (empty($url)) {
             throw new Exception('Invalid connection string.');
@@ -388,6 +399,22 @@ class Sparrow {
     }
 
     /**
+     * Sets a between where clause.
+     *
+     * @param string $field Database field
+     * @param string $value1 First value
+     * @param string $value2 Second value
+     */
+    public function between($field, $value1, $value2) {
+        $this->where(sprintf(
+            '%s BETWEEN %s AND %s',
+            $field,
+            $this->quote($value1),
+            $this->quote($value2)
+        ));
+    }
+
+    /**
      * Builds a select query.
      *
      * @param array $fields Array of field names to select
@@ -397,13 +424,13 @@ class Sparrow {
         $this->checkTable();
 
         $fields = (is_array($fields)) ? implode(',', $fields) : $fields;
-        $this->limit($limit);
-        $this->offset($offset);
+        $this->limit($limit, $offset);
 
-        $this->sql = sprintf(
-            'SELECT %s %s FROM %s %s %s %s %s %s %s %s',
+        $this->sql(array(
+            'SELECT',
             $this->distinct,
             $fields,
+            'FROM',
             $this->table,
             $this->joins,
             $this->where,
@@ -412,7 +439,7 @@ class Sparrow {
             $this->order,
             $this->limit,
             $this->offset
-        );
+        ));
 
         return $this;
     }
@@ -436,12 +463,13 @@ class Sparrow {
             )
         ));
 
-        $this->sql = sprintf(
-            'INSERT INTO %s (%s) VALUES (%s)',
+        $this->sql(array(
+            'INSERT INTO',
             $this->table,
-            $keys,
-            $values
-        );
+            '('.$keys.')',
+            'VALUES',
+            '('.$values.')'
+        ));
 
         return $this;
     }
@@ -462,12 +490,13 @@ class Sparrow {
             $values[] = $key.'='.$this->quote($value);
         }
 
-        $this->sql = sprintf(
-            'UPDATE %s SET %s %s',
+        $this->sql(array(
+            'UPDATE',
             $this->table,
+            'SET',
             implode(',', $values),
             $this->where
-        );
+        ));
 
         return $this;
     }
@@ -482,11 +511,11 @@ class Sparrow {
             $this->where($where);
         }
 
-        $this->sql = sprintf(
-            'DELETE FROM %s %s',
+        $this->sql(array(
+            'DELETE FROM',
             $this->table,
             $this->where
-        );
+        ));
 
         return $this;
     }
@@ -494,15 +523,20 @@ class Sparrow {
     /**
      * Gets or sets the SQL statement.
      *
-     * @param string SQL statement
+     * @param string|array SQL statement
      * @return string SQL statement
      */
     public function sql($sql = null) {
         if ($sql !== null) {
-            $this->sql = $sql;
+            $this->sql = trim(
+                (is_array($sql)) ?
+                    array_reduce($sql, array($this, 'build')) :
+                    $sql
+            );
 
             return $this;
         }
+
         return $this->sql;
     }
 
@@ -1191,17 +1225,33 @@ class Sparrow {
      * Sets the class.
      *
      * @param string|object $class Class name or instance
-     * @param array $config Class configuration
      */
     public function using($class) {
         if (is_string($class)) {
-            $this->class = new $class;
+            $this->class = $class;
         }
         else if (is_object($class)) {
-            $this->class = $class;
+            $this->class = get_class($class);
         }
 
         return $this;
+    }
+
+    /**
+     * Loads properties for an object.
+     *
+     * @param object $object Class instance
+     * @param array $data Property data
+     * @return object Populated object
+     */
+    public function load($object, array $data) {
+        foreach ($data as $key => $value) {
+            if (property_exists($object, $key)) {
+                $object->$key = $value;
+            }
+        }
+
+        return $object;
     }
    
     /**
@@ -1212,7 +1262,7 @@ class Sparrow {
      * @return object Populated object
      */
     public function find($value, $key = null) {
-        $this->checkClass();        
+        $this->checkClass();
 
         $properties = $this->getProperties();
 
@@ -1228,33 +1278,32 @@ class Sparrow {
             $this->where($value);
         }
 
+        $object = null;
+
         if (!empty($this->where)) {
             $data = $this->one($key);
 
-            foreach ($data as $key => $value) {
-                if (property_exists($this->class, $key)) {
-                    $this->class->$key = $value;
-                }
-            }
+            $object = $this->load(new $this->class, $data);
         }
 
-        return $this->class;
+        return $object;
     }
 
     /**
      * Saves an object to the database.
      *
+     * @param object $object Class instance
      * @param array $fields Select database fields to save
      */
-    public function save($fields = null) {
-        $this->checkClass();        
+    public function save($object, array $fields = null) {
+        $this->using($object);
 
         $properties = $this->getProperties();
 
         $this->from($properties->table);
 
-        $data = get_object_vars($this->class);
-        $id = $this->class->{$properties->id_field};
+        $data = get_object_vars($object);
+        $id = $object->{$properties->id_field};
 
         unset($data[$properties->id_field]);
 
@@ -1262,7 +1311,7 @@ class Sparrow {
             $this->insert($data)
                 ->execute();
 
-            $this->class->{$properties->id_field} = $this->insert_id;
+            $object->{$properties->id_field} = $this->insert_id;
         }
         else {
             if ($fields !== null) {
@@ -1280,30 +1329,25 @@ class Sparrow {
 
     /**
      * Removes an object from the database.
+     *
+     * @param object $object Class instance
      */
-    public function remove() {
+    public function remove($object) {
+        $this->using($object);
+
         $this->checkClass();        
 
         $properties = $this->getProperties();
 
         $this->from($properties->table);
 
-        $id = $this->class->{$properties->id_field};
+        $id = $object->{$properties->id_field};
 
         if ($id !== null) {
             $this->where($properties->id_field, $id)
                 ->delete()
                 ->execute();
         }
-    }
-
-    /**
-     * Gets the class object instance.
-     *
-     * @return object Class object instance
-     */
-    public function getObject() {
-        return $this->class;
     }
 
     /**
@@ -1316,9 +1360,7 @@ class Sparrow {
 
         if (!$this->class) return array();
 
-        $class = get_class($this->class);
-
-        if (!isset($properties[$class])) {
+        if (!isset($properties[$this->class])) {
             static $defaults = array(
                 'table' => null,
                 'id_field' => null,
@@ -1328,10 +1370,10 @@ class Sparrow {
             $reflection = new ReflectionClass($this->class);
             $config = $reflection->getStaticProperties();
 
-            $properties[$class] = (object)array_merge($defaults, $config);
+            $properties[$this->class] = (object)array_merge($defaults, $config);
         }
 
-        return $properties[$class];
+        return $properties[$this->class];
     }
 }
 ?>
