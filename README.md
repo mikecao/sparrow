@@ -589,8 +589,8 @@ This will execute:
 
     SELECT * FROM user WHERE email = 'bob@aol.com'
 
-Note that the `find` method will always return a single object instance, even if the where
-condition matches multiple records.
+If the `find` method retrieves multiple records, it will return an array of objects
+instead of a single object.
 
 ### Saving Objects
 
@@ -619,7 +619,7 @@ This will execute:
 
     UPDATE user SET name = 'Bob', email = 'bob@aol.com' WHERE id = 123
 
-So to update an existing record, just fetch an object from the database, update its properties, then save it.
+To update an existing record, just fetch an object from the database, update its properties, then save it.
 
     // Fetch an object from the database
     $user = $db->find(123);
@@ -648,6 +648,19 @@ To delete an object, use the `remove` function.
 
     // Delete from the database
     $db->remove();
+
+### Advanced Finding
+
+You can the sql builder functions to further define criteria for loading objects.
+
+    $db->using('User')
+        ->where('id >', 10)
+        ->sortAsc('name')
+        ->find();
+
+This will execute:
+
+    SELECT * FROM user WHERE id > 10 ORDER BY name ASC
 
 ## Statistics
 

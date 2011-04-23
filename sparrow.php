@@ -1278,15 +1278,18 @@ class Sparrow {
             $this->where($value);
         }
 
-        $object = null;
-
         if (!empty($this->where)) {
-            $data = $this->one($key);
+            $data = $this->many($key);
+            $objects = array();
 
-            $object = $this->load(new $this->class, $data);
+            foreach ($data as $row) {
+                $objects[] = $this->load(new $this->class, $row);
+            }
+
+            return (sizeof($objects) == 1) ? $objects[0] : $objects;
         }
 
-        return $object;
+        return false;
     }
 
     /**
