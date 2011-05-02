@@ -968,10 +968,11 @@ class Sparrow {
      * @param string $field Field name
      * @param string $key Cache key
      */
-    public function min($key = null) {
+    public function min($field, $key = null) {
+        $this->select('MIN('.$field.') min_value');
+
         return $this->value(
             'min_value',
-            $this->select('MIN('.$field.') min_value')->sql(),
             $key
         );
     }
@@ -982,10 +983,11 @@ class Sparrow {
      * @param string $field Field name
      * @param string $key Cache key
      */
-    public function max($key = null) {
+    public function max($field, $key = null) {
+        $this->select('MAX('.$field.') max_value');
+
         return $this->value(
             'max_value',
-            $this->select('MAX('.$field.') max_value')->sql(),
             $key
         );
     }
@@ -996,10 +998,11 @@ class Sparrow {
      * @param string $field Field name
      * @param string $key Cache key
      */
-    public function sum($key = null) {
+    public function sum($field, $key = null) {
+        $this->select('SUM('.$field.') sum_value');
+
         return $this->value(
             'sum_value',
-            $this->select('SUM('.$field.') sum_value')->sql(),
             $key
         );
     }
@@ -1010,10 +1013,11 @@ class Sparrow {
      * @param string $field Field name
      * @param string $key Cache key
      */
-    public function avg($key = null) {
+    public function avg($field, $key = null) {
+        $this->select('AVG('.$field.') avg_value');
+
         return $this->value(
             'avg_value',
-            $this->select('AVG('.$field.') avg_value')->sql(),
             $key
         ); 
     }
