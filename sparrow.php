@@ -1277,35 +1277,37 @@ class Sparrow {
      * @param string $key Cache key
      * @return object Populated object
      */
-    public function find($value, $key = null) {
+    public function find($value = null, $key = null) {
         $this->checkClass();
 
         $properties = $this->getProperties();
 
         $this->from($properties->table, false);
 
-        if (is_int($value) && property_exists($properties, 'id_field')) {
-            $this->where($properties->id_field, $value);
-        }
-        else if (is_string($value) && property_exists($properties, 'name_field')) {
-            $this->where($properties->name_field, $value);
-        }
-        else if (is_array($value)) {
-            $this->where($value);
-        }
-
-        if (!empty($this->where)) {
-            $data = $this->many($key);
-            $objects = array();
-
-            foreach ($data as $row) {
-                $objects[] = $this->load(new $this->class, $row);
+        if ($value !== null) {
+            if (is_int($value) && property_exists($properties, 'id_field')) {
+                $this->where($properties->id_field, $value);
             }
-
-            return (sizeof($objects) == 1) ? $objects[0] : $objects;
+            else if (is_string($value) && property_exists($properties, 'name_field')) {
+                $this->where($properties->name_field, $value);
+            }
+            else if (is_array($value)) {
+                $this->where($value);
+            }
         }
 
-        return false;
+        if (empty($this->sql)) {
+            $this->select();
+        }
+
+        $data = $this->many($key);
+        $objects = array();
+
+        foreach ($data as $row) {
+            $objects[] = $this->load(new $this->class, $row);
+        }
+
+        return (sizeof($objects) == 1) ? $objects[0] : $objects;
     }
 
     /**

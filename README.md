@@ -649,7 +649,7 @@ To delete an object, use the `remove` function.
 
 ### Advanced Finding
 
-You can the sql builder functions to further define criteria for loading objects.
+You can use the sql builder functions to further define criteria for loading objects.
 
     $db->using('User')
         ->where('id >', 10)
@@ -659,6 +659,12 @@ You can the sql builder functions to further define criteria for loading objects
 This will execute:
 
     SELECT * FROM user WHERE id > 10 ORDER BY name ASC
+
+You can also pass in raw SQL to load your objects.
+
+    $db->using('User')
+        ->sql('SELECT * FROM user WHERE id > 10')
+        ->find()
 
 ## Statistics
 
