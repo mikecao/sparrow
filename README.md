@@ -664,7 +664,7 @@ You can also pass in raw SQL to load your objects.
 
     $db->using('User')
         ->sql('SELECT * FROM user WHERE id > 10')
-        ->find()
+        ->find();
 
 ## Statistics
 

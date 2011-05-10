@@ -1029,9 +1029,10 @@ class Sparrow {
      * @param string $key Cache key
      */
     public function count($field = '*', $key = null) {
+        $this->select('COUNT('.$field.') num_rows');
+
         return $this->value(
             'num_rows',
-            $this->select('COUNT('.$field.') num_rows')->sql(),
             $key
         );
     }
