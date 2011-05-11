@@ -23,7 +23,6 @@ class Sparrow {
     protected $cache_type;
     protected $stats;
     protected $query_time;
-    protected $caller;
     protected $class;
 
     public $last_query;
@@ -222,7 +221,6 @@ class Sparrow {
         if ($reset) {
             $this->reset();
         }
-        $this->caller = null;
 
         return $this;
     }
@@ -801,10 +799,6 @@ class Sparrow {
      * @return array Database rows
      */
     public function many($key = null) {
-        if (!$this->caller) {
-            $this->caller = ($key !== null) ? __FUNCTION__ : null;
-        }
-
         if (empty($this->sql)) {
             $this->select();
         }
@@ -862,7 +856,7 @@ class Sparrow {
             }
         }
 
-        if ($key !== null && $this->caller === __FUNCTION__) {
+        if (!$this->is_cached && $key !== null) {
             $this->store($key, $data);
         }
 
@@ -876,10 +870,6 @@ class Sparrow {
      * @return array Database row
      */
     public function one($key = null) {
-        if (!$this->caller) {
-            $this->caller = ($key !== null) ? __FUNCTION__ : null;
-        }
-
         if (empty($this->sql)) {
             $this->limit(1)->select();
         }
@@ -887,10 +877,6 @@ class Sparrow {
         $data = $this->many($key);
 
         $row = (!empty($data)) ? $data[0] : array();
-
-        if ($key !== null && $this->caller === __FUNCTION__) {
-            $this->store($key, $row);
-        }
 
         return $row;
     }
@@ -903,17 +889,9 @@ class Sparrow {
      * @return mixed Database row value
      */
     public function value($name, $key = null) {
-        if (!$this->caller) {
-            $this->caller = ($key !== null) ? __FUNCTION__ : null;
-        }
-
         $row = $this->one($key);
 
         $value = (!empty($row)) ? $row[$name] : null;
-
-        if ($key !== null && $value !== null && $this->caller === __FUNCTION__) {
-            $this->store($key, $value);
-        }
 
         return $value;
     }
@@ -1117,7 +1095,7 @@ class Sparrow {
                 break;
 
             case 'file':
-                $file = $this->cache.'/'.$key;
+                $file = $this->cache.'/'.md5($key);
                 file_put_contents($file, serialize($value));
                 break;
 
@@ -1152,7 +1130,7 @@ class Sparrow {
                 return xcache_get($key);
 
             case 'file':
-                $file = $this->cache.'/'.$key;
+                $file = $this->cache.'/'.md5($key);
                 if ($this->is_cached = file_exists($file)) {
                     return unserialize(file_get_contents($file));
                 }
