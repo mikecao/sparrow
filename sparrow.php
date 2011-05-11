@@ -678,8 +678,7 @@ class Sparrow {
         if ($key !== null) {
             $result = $this->fetch($key);
 
-            if ($result !== null) {
-                $this->is_cached = true;
+            if ($this->is_cached) {
                 return $result;
             }
         }
@@ -1136,20 +1135,25 @@ class Sparrow {
     public function fetch($key) {
         switch ($this->cache_type) {
             case 'memcached':
-                return $this->cache->get($key);
+                $value = $this->cache->get($key);
+                $this->is_cached = ($this->cache->getResultCode() == Memcached::RES_SUCCESS);
+                return $value;
 
             case 'memcache':
-                return $this->cache->get($key);
+                $value = $this->cache->get($key);
+                $this->is_cached = ($value !== false);
+                return $value;
 
             case 'apc':
-                return apc_fetch($key);
+                return apc_fetch($key, $this->is_cached);
 
             case 'xcache':
+                $this->is_cached = xcache_isset($key);
                 return xcache_get($key);
 
             case 'file':
                 $file = $this->cache.'/'.$key;
-                if (file_exists($file)) {
+                if ($this->is_cached = file_exists($file)) {
                     return unserialize(file_get_contents($file));
                 }
                 break;
