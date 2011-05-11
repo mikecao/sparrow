@@ -666,9 +666,10 @@ class Sparrow {
      * Executes a sql statement.
      *
      * @param string $key Cache key
+     * @param int $expire Expiration time in seconds
      * @return object Query results object
      */
-    public function execute($key = null) {
+    public function execute($key = null, $expire = 0) {
         if (!$this->db) {
             throw new Exception('Database is not defined.');
         }
@@ -796,22 +797,23 @@ class Sparrow {
      * Fetch multiple rows from a select query.
      *
      * @param string $key Cache key
+     * @param int $expire Expiration time in seconds
      * @return array Database rows
      */
-    public function many($key = null) {
+    public function many($key = null, $expire = 0) {
         if (empty($this->sql)) {
             $this->select();
         }
 
         $data = array();
 
-        $result = $this->execute($key);
+        $result = $this->execute($key, $expire);
 
         if ($this->is_cached) {
             $data = $result;
 
             if ($this->stats_enabled) {
-                $this->stats['cached'][$key] += 1;
+                $this->stats['cached'][$key] = $this->sql;
             }
         }
         else {
@@ -857,7 +859,7 @@ class Sparrow {
         }
 
         if (!$this->is_cached && $key !== null) {
-            $this->store($key, $data);
+            $this->store($key, $data, $expire);
         }
 
         return $data;
@@ -867,14 +869,15 @@ class Sparrow {
      * Fetch a single row from a select query.
      *
      * @param string $key Cache key
+     * @param int $expire Expiration time in seconds
      * @return array Database row
      */
-    public function one($key = null) {
+    public function one($key = null, $expire = 0) {
         if (empty($this->sql)) {
             $this->limit(1)->select();
         }
 
-        $data = $this->many($key);
+        $data = $this->many($key, $expire);
 
         $row = (!empty($data)) ? $data[0] : array();
 
@@ -886,10 +889,11 @@ class Sparrow {
      *
      * @param string $name Database field name
      * @param string $key Cache key
+     * @param int $expire Expiration time in seconds
      * @return mixed Database row value
      */
-    public function value($name, $key = null) {
-        $row = $this->one($key);
+    public function value($name, $key = null, $expire = 0) {
+        $row = $this->one($key, $expire);
 
         $value = (!empty($row)) ? $row[$name] : null;
 
@@ -943,14 +947,16 @@ class Sparrow {
      * Gets the min value for a specified field.
      *
      * @param string $field Field name
+     * @param int $expire Expiration time in seconds
      * @param string $key Cache key
      */
-    public function min($field, $key = null) {
+    public function min($field, $key = null, $expire = 0) {
         $this->select('MIN('.$field.') min_value');
 
         return $this->value(
             'min_value',
-            $key
+            $key,
+            $expire
         );
     }
 
@@ -958,14 +964,16 @@ class Sparrow {
      * Gets the max value for a specified field.
      *
      * @param string $field Field name
+     * @param int $expire Expiration time in seconds
      * @param string $key Cache key
      */
-    public function max($field, $key = null) {
+    public function max($field, $key = null, $expire = 0) {
         $this->select('MAX('.$field.') max_value');
 
         return $this->value(
             'max_value',
-            $key
+            $key,
+            $expire
         );
     }
 
@@ -973,14 +981,16 @@ class Sparrow {
      * Gets the sum value for a specified field.
      *
      * @param string $field Field name
+     * @param int $expire Expiration time in seconds
      * @param string $key Cache key
      */
-    public function sum($field, $key = null) {
+    public function sum($field, $key = null, $expire = 0) {
         $this->select('SUM('.$field.') sum_value');
 
         return $this->value(
             'sum_value',
-            $key
+            $key,
+            $expire
         );
     }
 
@@ -988,14 +998,16 @@ class Sparrow {
      * Gets the average value for a specified field.
      *
      * @param string $field Field name
+     * @param int $expire Expiration time in seconds
      * @param string $key Cache key
      */
-    public function avg($field, $key = null) {
+    public function avg($field, $key = null, $expire = 0) {
         $this->select('AVG('.$field.') avg_value');
 
         return $this->value(
             'avg_value',
-            $key
+            $key,
+            $expire
         ); 
     }
 
@@ -1004,13 +1016,15 @@ class Sparrow {
      *
      * @param string $field Field name
      * @param string $key Cache key
+     * @param int $expire Expiration time in seconds
      */
-    public function count($field = '*', $key = null) {
+    public function count($field = '*', $key = null, $expire = 0) {
         $this->select('COUNT('.$field.') num_rows');
 
         return $this->value(
             'num_rows',
-            $key
+            $key,
+            $expire
         );
     }
 
@@ -1074,29 +1088,33 @@ class Sparrow {
      *
      * @param string $key Cache key
      * @param mixed $value Value to store
-     * @param int $expires Expiration time in seconds
+     * @param int $expire Expiration time in seconds
      */
-    public function store($key, $value, $expires = 0) {
+    public function store($key, $value, $expire = 0) {
         switch ($this->cache_type) {
             case 'memcached':
-                $this->cache->set($key, $value, $expires);
+                $this->cache->set($key, $value, $expire);
                 break;
 
             case 'memcache':
-                $this->cache->set($key, $value, 0, $expires);
+                $this->cache->set($key, $value, 0, $expire);
                 break;
 
             case 'apc':
-                apc_store($key, $value, $expires);
+                apc_store($key, $value, $expire);
                 break;
 
             case 'xcache':
-                xcache_set($key, $value);
+                xcache_set($key, $value, $expire);
                 break;
 
             case 'file':
                 $file = $this->cache.'/'.md5($key);
-                file_put_contents($file, serialize($value));
+                $data = array(
+                    'value' => $value,
+                    'expire' => ($expire > 0) ? (time() + $expire) : 0
+                );
+                file_put_contents($file, serialize($data));
                 break;
 
             default:
@@ -1131,8 +1149,15 @@ class Sparrow {
 
             case 'file':
                 $file = $this->cache.'/'.md5($key);
+
                 if ($this->is_cached = file_exists($file)) {
-                    return unserialize(file_get_contents($file));
+                    $data = unserialize(file_get_contents($file));
+                    if ($data['expire'] == 0) {
+                        return $data['value'];
+                    }
+                    else if (time() > $data['expire']) {
+                        $this->is_cached = false;
+                    }
                 }
                 break;
 
