@@ -506,8 +506,24 @@ To use the filesystem as a cache, pass in a directory path:
 
     $db->setCache('./cache');
 
-The default cache is `memory` and only lasts the duration of the script. You don't need to do anything
-enable the memory cache.
+Note that local directories must be prefixed with `./`.
+
+The default cache is `memory` and only lasts the duration of the script. This cache is enabled by default.
+
+### Cache Expiration
+
+To cache data only for a set period of time, you can pass in an additional parameter which represents the expiraton time in seconds.
+
+    $key = 'top_users';
+    $expire = 600;
+
+    $users = $db->from('user')
+        ->sortDesc('score')
+        ->limit(100)
+        ->many($key, $expire);
+
+In the above example, we are getting a list of the top 100 highest scoring users and caching it for 600 seconds (10 minutes).
+You can pass the expiration parameter to any of the query methods that take a cache key parameter.
 
 ### Direct Access
 
