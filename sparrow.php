@@ -426,7 +426,7 @@ class Sparrow {
      * Builds a select query.
      *
      * @param array $fields Array of field names to select
-     * @return string SQL statement
+     * @return object Self reference
      */
     public function select($fields = '*', $limit = null, $offset = null) {
         $this->checkTable();
@@ -456,7 +456,7 @@ class Sparrow {
      * Builds an insert query.
      *
      * @param array $data Array of key and values to insert
-     * @return string SQL statement
+     * @return object Self reference
      */
     public function insert(array $data) {
         $this->checkTable();
@@ -485,17 +485,23 @@ class Sparrow {
     /**
      * Builds an update query.
      *
-     * @param array $data Array of keys and values to insert
-     * @return string SQL statement
+     * @param string|array $data Array of keys and values, or string literal
+     * @return object Self reference
      */
-    public function update(array $data) {
+    public function update($data) {
         $this->checkTable();
 
         if (empty($data)) return $this;
 
         $values = array();
-        foreach ($data as $key => $value) {
-            $values[] = $key.'='.$this->quote($value);
+
+        if (is_array($data)) {
+            foreach ($data as $key => $value) {
+                $values[] = (is_numeric($key)) ? $value : $key.'='.$this->quote($value);
+            }
+        }
+        else {
+            $values[] = (string)$data;
         }
 
         $this->sql(array(
@@ -511,6 +517,9 @@ class Sparrow {
 
     /**
      * Builds a delete query.
+     *
+     * @param array $where Where conditions
+     * @return object Self reference
      */
     public function delete($where = null) {
         $this->checkTable();
@@ -798,7 +807,7 @@ class Sparrow {
      *
      * @param string $key Cache key
      * @param int $expire Expiration time in seconds
-     * @return array Database rows
+     * @return array Rows
      */
     public function many($key = null, $expire = 0) {
         if (empty($this->sql)) {
@@ -870,7 +879,7 @@ class Sparrow {
      *
      * @param string $key Cache key
      * @param int $expire Expiration time in seconds
-     * @return array Database row
+     * @return array Row
      */
     public function one($key = null, $expire = 0) {
         if (empty($this->sql)) {
@@ -890,7 +899,7 @@ class Sparrow {
      * @param string $name Database field name
      * @param string $key Cache key
      * @param int $expire Expiration time in seconds
-     * @return mixed Database row value
+     * @return mixed Row value
      */
     public function value($name, $key = null, $expire = 0) {
         $row = $this->one($key, $expire);
@@ -898,49 +907,6 @@ class Sparrow {
         $value = (!empty($row)) ? $row[$name] : null;
 
         return $value;
-    }
-
-    /**
-     * Wraps quotes around a string and escapes the content.
-     *
-     * @param string $value String value
-     * @return string Quoted string
-     */
-    public function quote($value) {
-        return '\''.$this->escape($value).'\'';
-    }
-
-    /**
-     * Escapes special characters in a string.
-     *
-     * @param string $value Value to escape
-     * @return string Escaped value
-     */
-    public function escape($value) {
-        if ($this->db !== null) {
-            switch ($this->db_type) {
-                case 'mysqli':
-                    return $this->db->real_escape_string($value);
-
-                case 'mysql':
-                    return mysql_real_escape_string($value, $this->db);
-
-                case 'pgsql':
-                    return pg_escape_string($this->db, $value);
-
-                case 'sqlite':
-                    return sqlite_escape_string($value);
-
-                case 'sqlite3':
-                    return $this->db->escapeString($value); 
-            }            
-        }
-
-        return str_replace(
-            array('\\', "\0", "\n", "\r", "'", '"', "\x1a"),
-            array('\\\\', '\\0', '\\n', '\\r', "\\'", '\\"', '\\Z'),
-            $value
-        ); 
     }
 
     /**
@@ -1026,6 +992,49 @@ class Sparrow {
             $key,
             $expire
         );
+    }
+
+    /**
+     * Wraps quotes around a string and escapes the content.
+     *
+     * @param string $value String value
+     * @return string Quoted string
+     */
+    public function quote($value) {
+        return '\''.$this->escape($value).'\'';
+    }
+
+    /**
+     * Escapes special characters in a string.
+     *
+     * @param string $value Value to escape
+     * @return string Escaped value
+     */
+    public function escape($value) {
+        if ($this->db !== null) {
+            switch ($this->db_type) {
+                case 'mysqli':
+                    return $this->db->real_escape_string($value);
+
+                case 'mysql':
+                    return mysql_real_escape_string($value, $this->db);
+
+                case 'pgsql':
+                    return pg_escape_string($this->db, $value);
+
+                case 'sqlite':
+                    return sqlite_escape_string($value);
+
+                case 'sqlite3':
+                    return $this->db->escapeString($value); 
+            }            
+        }
+
+        return str_replace(
+            array('\\', "\0", "\n", "\r", "'", '"', "\x1a"),
+            array('\\\\', '\\0', '\\n', '\\r', "\\'", '\\"', '\\Z'),
+            $value
+        ); 
     }
 
     /*** Cache Methods ***/
