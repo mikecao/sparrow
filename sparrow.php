@@ -32,6 +32,7 @@ class Sparrow {
     public $is_cached = false;
     public $stats_enabled = false;
     public $show_sql = false;
+    public $key_prefix = '';
 
     /**
      * Class constructor.
@@ -822,7 +823,7 @@ class Sparrow {
             $data = $result;
 
             if ($this->stats_enabled) {
-                $this->stats['cached'][$key] = $this->sql;
+                $this->stats['cached'][$this->key_prefix.$key] = $this->sql;
             }
         }
         else {
@@ -1100,6 +1101,8 @@ class Sparrow {
      * @param int $expire Expiration time in seconds
      */
     public function store($key, $value, $expire = 0) {
+        $key = $this->key_prefix.$key;
+
         switch ($this->cache_type) {
             case 'memcached':
                 $this->cache->set($key, $value, $expire);
@@ -1138,6 +1141,8 @@ class Sparrow {
      * @return mixed Cached value
      */
     public function fetch($key) {
+        $key = $this->key_prefix.$key;
+
         switch ($this->cache_type) {
             case 'memcached':
                 $value = $this->cache->get($key);
