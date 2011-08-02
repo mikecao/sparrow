@@ -96,6 +96,9 @@ class Sparrow {
      * @return string Condition as a string
      */
     protected function parseCondition($field, $value = null, $join = '', $escape = true) {
+        if (empty($field)) {
+            throw new Exception('Invalid where condition.');
+        }
         if (is_string($field)) {
             if ($value === null) return $join.' '.trim($field);
 
@@ -795,8 +798,8 @@ class Sparrow {
             $this->stats['queries'][] = array(
                 'query' => $this->sql,
                 'time' => $time,
-                'rows' => $this->num_rows,
-                'changes' => $this->affected_rows
+                'rows' => (int)$this->num_rows,
+                'changes' => (int)$this->affected_rows
             );
         }
 

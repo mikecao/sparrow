@@ -256,7 +256,7 @@ Output:
 
 To add a field to group by, use the `groupBy` function.
 
-    echo $db->from('id')
+    echo $db->from('user')
         ->groupBy('points')
         ->select(array('id','count(*)'))
         ->sql();
