@@ -1,6 +1,7 @@
 # Sparrow
 
-Sparrow is a simple SQL builder and database abstraction layer.
+Sparrow is a simple but powerful database toolkit. Sparrow is a fluent SQL builder, database abstraction layer, cache manager,
+query statistics generator, and micro-ORM all rolled into a single class file.
 
 ## Building SQL
 
@@ -716,9 +717,9 @@ with individual query times.
           ["time"]=>
               float(0.00026392936706543)
           ["rows"]=>
-          int(0)
-              ["changes"]=>
-          int(0)
+              int(0)
+          ["changes"]=>
+              int(0)
         }
       }
       ["total_time"]=>
