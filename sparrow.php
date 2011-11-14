@@ -1190,33 +1190,34 @@ class Sparrow {
      * @param string $key Cache key
      */
     public function clear($key) {
+        $key = $this->key_prefix.$key;
+
         switch ($this->cache_type) {
             case 'memcached':
-                $this->cache->delete($key);
-                break;
+                return $this->cache->delete($key);
 
             case 'memcache':
-                $this->cache->delete($key);
-                break;
+                return $this->cache->delete($key);
 
             case 'apc':
-                apc_delete($key);
-                break;
+                return apc_delete($key);
 
             case 'xcache':
-                xcache_unset($key);
-                break;
+                return xcache_unset($key);
 
             case 'file':
                 $file = $this->cache.'/'.$file;
                 if (file_exists($file)) {
-                    unlink($file);
+                    return unlink($file);
                 }
-                break;
+                return false;
 
             default:
-                unset($this->cache[$key]);
-                break;
+                if (isset($this->cache[$key])) {
+                    unset($this->cache[$key]);
+                    return true;
+                }
+                return false;
         }
     }
 
