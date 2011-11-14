@@ -1215,7 +1215,7 @@ class Sparrow {
                 break;
 
             default:
-                $this->cache[$key] = $value;
+                unset($this->cache[$key]);
                 break;
         }
     }
