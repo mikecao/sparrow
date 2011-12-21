@@ -576,13 +576,13 @@ class Sparrow {
         }
         // Connection information
         else if (is_array($db)) {
-            switch ($cfg['type']) {
+            switch ($db['type']) {
                 case 'mysqli':
                     $this->db = new mysqli(
-                        $cfg['hostname'],
-                        $cfg['username'],
-                        $cfg['password'],
-                        $cfg['database']
+                        $db['hostname'],
+                        $db['username'],
+                        $db['password'],
+                        $db['database']
                     );
 
                     if ($this->db->connect_error) {
@@ -593,26 +593,26 @@ class Sparrow {
 
                 case 'mysql':
                     $this->db = mysql_connect(
-                        $cfg['hostname'],
-                        $cfg['username'],
-                        $cfg['password']
+                        $db['hostname'],
+                        $db['username'],
+                        $db['password']
                     );
 
                     if (!$this->db) {
                         throw new Exception('Connection error: '.mysql_error());
                     }
 
-                    mysql_select_db($cfg['database'], $this->db);
+                    mysql_select_db($db['database'], $this->db);
 
                     break;
 
                 case 'pgsql':
                     $str = sprintf(
                         'host=%s dbname=%s user=%s password=%s',
-                        $cfg['hostname'],
-                        $cfg['database'],
-                        $cfg['username'],
-                        $cfg['password']
+                        $db['hostname'],
+                        $db['database'],
+                        $db['username'],
+                        $db['password']
                     );
 
                     $this->db = pg_connect($str);
@@ -620,7 +620,7 @@ class Sparrow {
                     break;
 
                 case 'sqlite':
-                    $this->db = sqlite_open($cfg['database'], 0666, $error);
+                    $this->db = sqlite_open($db['database'], 0666, $error);
 
                     if (!$this->db) {
                         throw new Exception('Connection error: '.$error);
@@ -629,14 +629,14 @@ class Sparrow {
                     break;
 
                 case 'sqlite3':
-                    $this->db = new SQLite3($cfg['database']);
+                    $this->db = new SQLite3($db['database']);
             }
 
             if ($this->db == null) {
-                throw new Exception('Invalid database type.');
+                throw new Exception('Undefined database.');
             }
 
-            $this->db_type = $cfg['type'];
+            $this->db_type = $db['type'];
         }
         // Connection object or resource
         else {
@@ -1088,6 +1088,8 @@ class Sparrow {
      * @param string|object $cache Cache connection string or object
      */
     public function setCache($cache) {
+        $this->cache = null;
+
         // Connection string
         if (is_string($cache)) {
             if ($cache{0} == '.' || $cache{0} == '/') {
@@ -1100,28 +1102,28 @@ class Sparrow {
         }
         // Connection information
         else if (is_array($cache)) {
-            switch ($cfg['type']) {
+            switch ($cache['type']) {
                 case 'memcache':
                     $this->cache = new Memcache;
                     $this->cache->connect(
-                        $cfg['hostname'],
-                        $cfg['port']
+                        $cache['hostname'],
+                        $cache['port']
                     );
                     break;
 
                 case 'memcached':
                     $this->cache = new Memcached;
                     $this->cache->addServer(
-                        $cfg['hostname'],
-                        $cfg['port']
+                        $cache['hostname'],
+                        $cache['port']
                     );
                     break;
 
                 default:
-                    $this->cache = $cfg['type'];
+                    $this->cache = $cache['type'];
             }
 
-            $this->cache_type = $cfg['type'];
+            $this->cache_type = $cache['type'];
         }
         // Cache object
         else if (is_object($cache)) {
