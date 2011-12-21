@@ -25,6 +25,13 @@ class Sparrow {
     protected $query_time;
     protected $class;
 
+    protected static $db_types = array(
+        'pdo', 'mysqli', 'mysql', 'pgsql', 'sqlite', 'sqlite3'
+    );
+    protected static $cache_types = array(
+        'memcached', 'memcache', 'xcache'
+    );
+
     public $last_query;
     public $num_rows;
     public $insert_id;
@@ -36,17 +43,8 @@ class Sparrow {
 
     /**
      * Class constructor.
-     *
-     * @param string|object $db Database connection string or object
-     * @param string|object $cache Cache connection string or object
      */
-    public function __construct($db = null, $cache = null) {
-        if ($db !== null) {
-            $this->setDb($db);
-        }
-        if ($cache !== null) {
-            $this->setCache($cache);
-        }
+    public function __construct() {
     }
 
     /*** Core Methods ***/
@@ -66,7 +64,7 @@ class Sparrow {
      * Parses a connection string into an object.
      *
      * @param string $connection Connection string
-     * @return object Connection information
+     * @return array Connection information
      */
     public function parseConnection($connection) {
         $url = parse_url($connection);
@@ -75,16 +73,77 @@ class Sparrow {
             throw new Exception('Invalid connection string.');
         }
 
-        $cfg = new stdClass;
-        $cfg->type = (isset($url['scheme'])) ? $url['scheme'] : $url['path'];
-        $cfg->hostname = $url['host'];
-        $cfg->database = isset($url['path']) ? substr($url['path'],1) : null;
-        $cfg->username = isset($url['user']) ? $url['user'] : null;
-        $cfg->password = isset($url['pass']) ? $url['pass'] : null;
-        $cfg->port = isset($url['port']) ? $url['port'] : null;
+        $cfg = array();
+
+        $cfg['type'] = (isset($url['scheme'])) ? $url['scheme'] : $url['path'];
+        $cfg['hostname'] = $url['host'];
+        $cfg['database'] = isset($url['path']) ? substr($url['path'],1) : null;
+        $cfg['username'] = isset($url['user']) ? $url['user'] : null;
+        $cfg['password'] = isset($url['pass']) ? $url['pass'] : null;
+        $cfg['port'] = isset($url['port']) ? $url['port'] : null;
 
         return $cfg;
     }
+
+    /**
+     * Gets the query statistics.
+     */
+    public function getStats() {
+        $this->stats['total_time'] = 0;
+        $this->stats['num_queries'] = 0;
+        $this->stats['num_rows'] = 0;
+        $this->stats['num_changes'] = 0;
+
+        if (isset($this->stats['queries'])) {
+            foreach ($this->stats['queries'] as $query) {
+                $this->stats['total_time'] += $query['time'];
+                $this->stats['num_queries'] += 1;
+                $this->stats['num_rows'] += $query['rows'];
+                $this->stats['num_changes'] += $query['changes'];
+            }
+        }
+
+        $this->stats['avg_query_time'] =
+            $this->stats['total_time'] /
+            (float)(($this->stats['num_queries'] > 0) ? $this->stats['num_queries'] : 1);
+
+        return $this->stats;
+    }
+
+    /**
+     * Checks whether the table property has been set.
+     */
+    public function checkTable() {
+        if (!$this->table) {
+            throw new Exception('Table is not defined.');
+        }
+    }
+
+    /**
+     * Checks whether the class property has been set.
+     */
+    public function checkClass() {
+        if (!$this->class) {
+            throw new Exception('Class is not defined.');
+        }
+    }
+
+    /**
+     * Resets class properties.
+     */
+    public function reset() {
+        $this->where = '';
+        $this->joins = '';
+        $this->order = '';
+        $this->groups = '';
+        $this->having = '';
+        $this->distinct = '';
+        $this->limit = '';
+        $this->offset = '';
+        $this->sql = '';
+    }
+
+    /*** SQL Builder Methods ***/
 
     /**
      * Parses a condition statement.
@@ -153,66 +212,6 @@ class Sparrow {
             return $str;
         }
     }
-
-    /**
-     * Gets the query statistics.
-     */
-    public function getStats() {
-        $this->stats['total_time'] = 0;
-        $this->stats['num_queries'] = 0;
-        $this->stats['num_rows'] = 0;
-        $this->stats['num_changes'] = 0;
-
-        if (isset($this->stats['queries'])) {
-            foreach ($this->stats['queries'] as $query) {
-                $this->stats['total_time'] += $query['time'];
-                $this->stats['num_queries'] += 1;
-                $this->stats['num_rows'] += $query['rows'];
-                $this->stats['num_changes'] += $query['changes'];
-            }
-        }
-
-        $this->stats['avg_query_time'] =
-            $this->stats['total_time'] /
-            (float)(($this->stats['num_queries'] > 0) ? $this->stats['num_queries'] : 1);
-
-        return $this->stats;
-    }
-
-    /**
-     * Checks whether the table property has been set.
-     */
-    public function checkTable() {
-        if (!$this->table) {
-            throw new Exception('Table is not defined.');
-        }
-    }
-
-    /**
-     * Checks whether the class property has been set.
-     */
-    public function checkClass() {
-        if (!$this->class) {
-            throw new Exception('Class is not defined.');
-        }
-    }
-
-    /**
-     * Resets class properties.
-     */
-    public function reset() {
-        $this->where = '';
-        $this->joins = '';
-        $this->order = '';
-        $this->groups = '';
-        $this->having = '';
-        $this->distinct = '';
-        $this->limit = '';
-        $this->offset = '';
-        $this->sql = '';
-    }
-
-    /*** SQL Builder Methods ***/
 
     /**
      * Sets the table.
@@ -566,19 +565,24 @@ class Sparrow {
     /**
      * Sets the database connection.
      *
-     * @param string|object $db Database connection string or object
+     * @param string|array|object $db Database connection string, array or object
      */
     public function setDb($db) {
-        if (is_string($db)) {
-            $cfg = $this->parseConnection($db);
+        $this->db = null;
 
-            switch ($cfg->type) {
+        // Connection string
+        if (is_string($db)) {
+            $this->setDb($this->parseConnection($db));
+        }
+        // Connection information
+        else if (is_array($db)) {
+            switch ($cfg['type']) {
                 case 'mysqli':
                     $this->db = new mysqli(
-                        $cfg->hostname,
-                        $cfg->username,
-                        $cfg->password,
-                        $cfg->database
+                        $cfg['hostname'],
+                        $cfg['username'],
+                        $cfg['password'],
+                        $cfg['database']
                     );
 
                     if ($this->db->connect_error) {
@@ -589,26 +593,26 @@ class Sparrow {
 
                 case 'mysql':
                     $this->db = mysql_connect(
-                        $cfg->hostname,
-                        $cfg->username,
-                        $cfg->password
+                        $cfg['hostname'],
+                        $cfg['username'],
+                        $cfg['password']
                     );
 
                     if (!$this->db) {
                         throw new Exception('Connection error: '.mysql_error());
                     }
 
-                    mysql_select_db($cfg->database, $this->db);
+                    mysql_select_db($cfg['database'], $this->db);
 
                     break;
 
                 case 'pgsql':
                     $str = sprintf(
                         'host=%s dbname=%s user=%s password=%s',
-                        $cfg->hostname,
-                        $cfg->database,
-                        $cfg->username,
-                        $cfg->password
+                        $cfg['hostname'],
+                        $cfg['database'],
+                        $cfg['username'],
+                        $cfg['password']
                     );
 
                     $this->db = pg_connect($str);
@@ -616,7 +620,7 @@ class Sparrow {
                     break;
 
                 case 'sqlite':
-                    $this->db = sqlite_open($cfg->database, 0666, $error);
+                    $this->db = sqlite_open($cfg['database'], 0666, $error);
 
                     if (!$this->db) {
                         throw new Exception('Connection error: '.$error);
@@ -625,16 +629,21 @@ class Sparrow {
                     break;
 
                 case 'sqlite3':
-                    $this->db = new SQLite3($cfg->database);
+                    $this->db = new SQLite3($cfg['database']);
             }
 
-            $this->db_type = $cfg->type;
+            if ($this->db == null) {
+                throw new Exception('Invalid database type.');
+            }
+
+            $this->db_type = $cfg['type'];
         }
+        // Connection object or resource
         else {
             $type = $this->getDbType($db);
 
-            if ($type == null) {
-                throw new Exception('Database is not supported.');
+            if (!in_array($type, self::$db_types)) {
+                throw new Exception('Invalid database type.');
             }
 
             $this->db = $db;
@@ -673,6 +682,8 @@ class Sparrow {
                     return 'pgsql';
             }
         }
+
+        return null;
     }
 
     /**
@@ -717,6 +728,27 @@ class Sparrow {
             $error = null;
 
             switch ($this->db_type) {
+                case 'pdo':
+                    try {
+                        $result = $this->db->prepare($this->sql);
+
+                        if (!$result) {
+                            $error = $this->db->errorInfo();
+                        }
+                        else {
+                            $result->execute();
+
+                            $this->num_rows = $result->rowCount();
+                            $this->affected_rows = $result->rowCount();
+                            $this->insert_id = $this->db->lastInsertId();
+                        }
+                    }
+                    catch (PDOException $ex) {
+                        $error = $ex->getMessage();
+                    }
+
+                    break;
+
                 case 'mysqli':
                     $result = $this->db->query($this->sql);
 
@@ -831,6 +863,12 @@ class Sparrow {
         }
         else {
             switch ($this->db_type) {
+                case 'pdo':
+                    $data = $result->fetchAll(PDO::FETCH_ASSOC);
+                    $this->num_rows = sizeof($data);
+ 
+                    break;
+
                 case 'mysqli':
                     if (function_exists('mysqli_fetch_all')) {
                         $data = $result->fetch_all(MYSQLI_ASSOC);
@@ -1005,40 +1043,41 @@ class Sparrow {
      * @return string Quoted string
      */
     public function quote($value) {
-        return '\''.$this->escape($value).'\'';
-    }
-
-    /**
-     * Escapes special characters in a string.
-     *
-     * @param string $value Value to escape
-     * @return string Escaped value
-     */
-    public function escape($value) {
         if ($this->db !== null) {
             switch ($this->db_type) {
+                case 'pdo':
+                    $value = $this->db->quote($value);
+                    break;
+
                 case 'mysqli':
-                    return $this->db->real_escape_string($value);
+                    $value = $this->db->real_escape_string($value);
+                    break;
 
                 case 'mysql':
-                    return mysql_real_escape_string($value, $this->db);
+                    $value = mysql_real_escape_string($value, $this->db);
+                    break;
 
                 case 'pgsql':
-                    return pg_escape_string($this->db, $value);
+                    $value = pg_escape_string($this->db, $value);
+                    break;
 
                 case 'sqlite':
-                    return sqlite_escape_string($value);
+                    $value = sqlite_escape_string($value);
+                    break;
 
                 case 'sqlite3':
-                    return $this->db->escapeString($value); 
+                    $value = $this->db->escapeString($value); 
+                    break;
             }            
         }
 
-        return str_replace(
+        $value = str_replace(
             array('\\', "\0", "\n", "\r", "'", '"', "\x1a"),
             array('\\\\', '\\0', '\\n', '\\r', "\\'", '\\"', '\\Z'),
             $value
-        ); 
+        );
+
+        return "'$value'";
     }
 
     /*** Cache Methods ***/
@@ -1049,41 +1088,51 @@ class Sparrow {
      * @param string|object $cache Cache connection string or object
      */
     public function setCache($cache) {
+        // Connection string
         if (is_string($cache)) {
             if ($cache{0} == '.' || $cache{0} == '/') {
                 $this->cache = $cache;
                 $this->cache_type = 'file';
             }
             else {
-                $cfg = $this->parseConnection($cache);
-
-                switch ($cfg->type) {
-                    case 'memcache':
-                        $this->cache = new Memcache;
-                        $this->cache->connect(
-                            $cfg->hostname,
-                            $cfg->port
-                        );
-                        break;
-
-                    case 'memcached':
-                        $this->cache = new Memcached;
-                        $this->cache->addServer(
-                            $cfg->hostname,
-                            $cfg->port
-                        );
-                        break;
-
-                    default:
-                        $this->cache = $cfg->type;
-                }
-
-                $this->cache_type = $cfg->type;
+                $this->setCache($this->parseConnection($cache));
             }
         }
+        // Connection information
+        else if (is_array($cache)) {
+            switch ($cfg['type']) {
+                case 'memcache':
+                    $this->cache = new Memcache;
+                    $this->cache->connect(
+                        $cfg['hostname'],
+                        $cfg['port']
+                    );
+                    break;
+
+                case 'memcached':
+                    $this->cache = new Memcached;
+                    $this->cache->addServer(
+                        $cfg['hostname'],
+                        $cfg['port']
+                    );
+                    break;
+
+                default:
+                    $this->cache = $cfg['type'];
+            }
+
+            $this->cache_type = $cfg['type'];
+        }
+        // Cache object
         else if (is_object($cache)) {
+            $type = strtolower(get_class($cache));
+
+            if (!in_array($type, self::$cache_types)) {
+                throw new Exception('Invalid cache type.');
+            }
+
             $this->cache = $cache;
-            $this->cache_type = strtolower(get_class($cache));
+            $this->cache_type = $type;
         }
     }
 

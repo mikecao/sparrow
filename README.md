@@ -311,32 +311,45 @@ Output:
 
 ## Executing Queries
 
-Sparrow can also execute the queries it builds.
-You just need to pass in a connection string to the class constructor:
+Sparrow can also execute the queries it builds. You will need to call the `setDb()` method with either
+a connection string, an array of connection information, or a connection object.
 
-    $db = new Sparrow('mysql://admin:hunter2@localhost/mydb');
+The supported database types are `mysql`, `mysqli`, `pgsql`, `sqlite`, `sqlite3`, and `pdo`.
 
-The connection string uses the following format:
-
-    protocol://user:pass@hostname[:port]/database
-
-The supported protocols are `mysql`, `mysqli`, `pgsql`, `sqlite`, and `sqlite3`.
-
-You can also connect using the `setDb` method which allows you to pass in a connection string:
+Using a connection string:
 
     $db->setDb('mysql://admin:hunter2@localhost/mydb');
 
-Or a database object:
+The connection string uses the following format:
+
+    type://username:password@hostname[:port]/database
+
+Using a connection array:
+
+    $db->setDb(array(
+        'type' => 'mysql',
+        'hostname' => 'localhost',
+        'database' => 'mydb',
+        'username' => 'admin',
+        'password' => 'hunter2'
+    ));
+
+The possible array options are `type`, `hostname`, `database`, `username`, `password`, and `port`.
+
+Using a connection object:
 
     $mysql = mysql_connect('localhost', 'admin', 'hunter2');
 
     $db->setDb($mysql);
 
-You can also pass in an object to the constructor.
+To use PDO as the database, you must pass in a PDO object:
 
-    $mysql = mysql_connect('localhost', 'admin', 'hunter2');
+    $pdo = new PDO('mysql:host=localhost;dbname=mydb', 'admin', 'hunter2');
 
-    $db = new Sparrow($mysql);
+    $db->setDb($pdo);
+
+You cannot use the connection string or array options for PDO.
+
 
 ### Fetching records
 
@@ -463,18 +476,13 @@ You can also access the database object directly by using the  `getDb` function.
 
 ## Caching
 
-To enable caching, you can pass in a connection string as the second parameter in the constructor:
+To enable caching, you need to use the `setCache` method with a connection string or connection object.
 
-    $db = new Sparrow(
-        'mysql://admin:hunter2@localhost/mydb',
-        'memcache://localhost:11211'
-    );
-
-Or use the `setCache` method:
+Using a connection string:
 
     $db->setCache('memcache://localhost:11211');
 
-You can also pass in a cache object.
+Using a cache object:
 
     $cache = new Memcache();
     $cache->addServer('localhost', 11211);
@@ -509,7 +517,7 @@ To use the filesystem as a cache, pass in a directory path:
 
 Note that local directories must be prefixed with `./`.
 
-The default cache is `memory` and only lasts the duration of the script. This cache is enabled by default.
+The default cache is `memory` and only lasts the duration of the script.
 
 ### Cache Expiration
 
