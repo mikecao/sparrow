@@ -314,7 +314,7 @@ Output:
 Sparrow can also execute the queries it builds. You will need to call the `setDb()` method with either
 a connection string, an array of connection information, or a connection object.
 
-The supported database types are `mysql`, `mysqli`, `pgsql`, `sqlite`, `sqlite3`, and `pdo`.
+The supported database types are `mysql`, `mysqli`, `pgsql`, `sqlite` and `sqlite3`.
 
 Using a connection string:
 
@@ -323,6 +323,10 @@ Using a connection string:
 The connection string uses the following format:
 
     type://username:password@hostname[:port]/database
+
+For sqlite, you need to use:
+
+    type://database
 
 Using a connection array:
 
@@ -342,14 +346,17 @@ Using a connection object:
 
     $db->setDb($mysql);
 
-To use PDO as the database, you must pass in a PDO object:
+You can also use PDO for the database connection. To use the connection string or array method, prefix the database type with `pdo_`:
+
+    $db->setDb('pdo_mysql://admin:hunter2@localhost/mydb');
+
+The possible PDO types are `pdo_mysql`, `pdo_pgsql`, and `pdo_sqlite`.
+
+You can also pass in any PDO object directly:
 
     $pdo = new PDO('mysql:host=localhost;dbname=mydb', 'admin', 'hunter2');
 
     $db->setDb($pdo);
-
-You cannot use the connection string or array options for PDO.
-
 
 ### Fetching records
 

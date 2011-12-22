@@ -630,6 +630,42 @@ class Sparrow {
 
                 case 'sqlite3':
                     $this->db = new SQLite3($db['database']);
+
+                    break;
+
+                case 'pdo_mysql':
+                    $dsn = sprintf(
+                        'mysql:host=%s;port=%d;dbname=%s',
+                        $db['hostname'],
+                        isset($db['port']) ? $db['port'] : 3307,
+                        $db['database']
+                    );
+
+                    $this->db = new PDO($dsn, $db['username'], $db['password']);
+                    $db['type'] = 'pdo';
+
+                    break;
+
+                case 'pdo_pgsql':
+                    $dsn = sprintf(
+                        'pgsql:host=%s;port=%d;dbname=%s;user=%s;password=%s',
+                        $db['hostname'],
+                        isset($db['port']) ? $db['port'] : 5432,
+                        $db['database'],
+                        $db['username'],
+                        $db['password']
+                    );
+
+                    $this->db = new PDO($dsn);
+                    $db['type'] = 'pdo';
+
+                    break;
+
+                case 'pdo_sqlite':
+                    $this->db = new PDO('sqlite:/'.$db['database']);
+                    $db['type'] = 'pdo';
+
+                    break; 
             }
 
             if ($this->db == null) {
