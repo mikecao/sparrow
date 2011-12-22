@@ -415,12 +415,12 @@ You can also run raw SQL by passing it to the `sql` function.
 
 ### Escaping Values
 
-Sparrow's SQL building functions automatically escape values to prevent SQL injection.
-To escape values manually, like when you're writing own queries, you can use the `escape` function.
+Sparrow's SQL building functions automatically quote and escape values to prevent SQL injection.
+To quote and escape values manually, like when you're writing own queries, you can use the `quote` function.
 
     $name = "O'Dell";
 
-    printf("SELECT * FROM user WHERE name = '%s'", $db->escape($name));
+    printf("SELECT * FROM user WHERE name = %s", $db->quote($name));
 
 Output:
 
