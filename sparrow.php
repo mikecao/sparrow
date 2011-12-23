@@ -806,7 +806,11 @@ class Sparrow {
                         $error = mysql_error();
                     }
                     else {
-                        $this->num_rows = mysql_num_rows($result);
+                        if (!is_bool($result)) {
+                            $this->num_rows = mysql_num_rows($result);
+                        } else {
+                            $this->affected_rows = mysql_affected_rows($this->db);
+                        }
                         $this->affected_rows = mysql_affected_rows($this->db);
                         $this->insert_id = mysql_insert_id($this->db);
                     }
