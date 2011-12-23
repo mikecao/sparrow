@@ -344,6 +344,8 @@ Using a connection object:
 
     $mysql = mysql_connect('localhost', 'admin', 'hunter2');
 
+    mysql_select_db('mydb');
+
     $db->setDb($mysql);
 
 You can also use PDO for the database connection. To use the connection string or array method, prefix the database type with `pdo_`:

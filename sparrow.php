@@ -792,8 +792,12 @@ class Sparrow {
                         $error = $this->db->error;
                     }
                     else {
-                        $this->num_rows = $result->num_rows;
-                        $this->affected_rows = $this->db->affected_rows - $result->num_rows;
+                        if (!is_bool($result)) {
+                            $this->num_rows = $result->num_rows;
+                        }
+                        else {
+                            $this->affected_rows = $this->db->affected_rows - $result->num_rows;
+                        }
                         $this->insert_id = $this->db->insert_id;
                     }
 
@@ -808,10 +812,10 @@ class Sparrow {
                     else {
                         if (!is_bool($result)) {
                             $this->num_rows = mysql_num_rows($result);
-                        } else {
+                        }
+                        else {
                             $this->affected_rows = mysql_affected_rows($this->db);
                         }
-                        $this->affected_rows = mysql_affected_rows($this->db);
                         $this->insert_id = mysql_insert_id($this->db);
                     }
 
