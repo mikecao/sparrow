@@ -161,7 +161,8 @@ class Sparrow {
         if (is_string($field)) {
             if ($value === null) return $join.' '.trim($field);
 
-            list($field, $operator) = explode(' ', $field);
+            if (strpos($field, ' '))
+                list($field, $operator) = explode(' ', $field);
 
             if (!empty($operator)) {
                 switch ($operator) {
