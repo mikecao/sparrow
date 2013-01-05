@@ -65,6 +65,7 @@ class Sparrow {
      *
      * @param string $connection Connection string
      * @return array Connection information
+     * @throws Exception For invalid connection string
      */
     public function parseConnection($connection) {
         $url = parse_url($connection);
@@ -75,8 +76,8 @@ class Sparrow {
 
         $cfg = array();
 
-        $cfg['type'] = (isset($url['scheme'])) ? $url['scheme'] : $url['path'];
-        $cfg['hostname'] = $url['host'];
+        $cfg['type'] = isset($url['scheme']) ? $url['scheme'] : $url['path'];
+        $cfg['hostname'] = isset($url['host']) ? $url['host'] : null;
         $cfg['database'] = isset($url['path']) ? substr($url['path'],1) : null;
         $cfg['username'] = isset($url['user']) ? $url['user'] : null;
         $cfg['password'] = isset($url['pass']) ? $url['pass'] : null;
@@ -153,6 +154,7 @@ class Sparrow {
      * @param string $join Joining word
      * @param boolean $escape Escape values setting
      * @return string Condition as a string
+     * @throws Exception For invalid where condition
      */
     protected function parseCondition($field, $value = null, $join = '', $escape = true) {
         if (empty($field)) {
@@ -222,6 +224,7 @@ class Sparrow {
      *
      * @param string $table Table name
      * @param boolean $reset Reset class properties
+     * @return object Self reference
      */
     public function from($table, $reset = true) {
         $this->table = $table;
@@ -238,6 +241,8 @@ class Sparrow {
      * @param string $table Table to join to
      * @param array $fields Fields to join on
      * @param string $type Type of join
+     * @return object Self reference
+     * @throws Exception For invalid join type
      */
     public function join($table, array $fields, $type = 'INNER') {
         static $joins = array(
@@ -262,6 +267,7 @@ class Sparrow {
      *
      * @param string $table Table to join to
      * @param array $fields Fields to join on
+     * @return object Self reference
      */
     public function leftJoin($table, array $fields) {
         return $this->join($table, $fields, 'LEFT OUTER');
@@ -272,6 +278,7 @@ class Sparrow {
      *
      * @param string $table Table to join to
      * @param array $fields Fields to join on
+     * @return object Self reference
      */
     public function rightJoin($table, array $fields) {
         return $this->join($table, $fields, 'RIGHT OUTER');
@@ -282,6 +289,7 @@ class Sparrow {
      *
      * @param string $table Table to join to
      * @param array $fields Fields to join on
+     * @return object Self reference
      */
     public function fullJoin($table, array $fields) {
         return $this->join($table, $fields, 'FULL OUTER');
@@ -292,6 +300,7 @@ class Sparrow {
      *
      * @param string|array $field A field name or an array of fields and values.
      * @param string $value A field value to compare to
+     * @return object Self reference
      */
     public function where($field, $value = null) {
         $join = (empty($this->where)) ? 'WHERE' : '';
@@ -304,6 +313,7 @@ class Sparrow {
      * Adds an ascending sort for a field.
      *
      * @param string $field Field name
+     * @return object Self reference
      */ 
     public function sortAsc($field) {
         return $this->orderBy($field, 'ASC');
@@ -313,6 +323,7 @@ class Sparrow {
      * Adds an descending sort for a field.
      *
      * @param string $field Field name
+     * @return object Self reference
      */ 
     public function sortDesc($field) {
         return $this->orderBy($field, 'DESC');        
@@ -322,7 +333,8 @@ class Sparrow {
      * Adds fields to order by.
      *
      * @param string $field Field name
-     * @param string $direction Sort direction 
+     * @param string $direction Sort direction
+     * @return object Self reference
      */
     public function orderBy($field, $direction = 'ASC') {
         $join = (empty($this->order)) ? 'ORDER BY' : ',';
@@ -347,6 +359,7 @@ class Sparrow {
      * Adds fields to group by.
      *
      * @param string|array $field Field name or array of field names
+     * @return object Self reference
      */
     public function groupBy($field) {
         $join = (empty($this->order)) ? 'GROUP BY' : ',';
@@ -362,6 +375,7 @@ class Sparrow {
      *
      * @param string|array $field A field name or an array of fields and values.
      * @param string $value A field value to compare to
+     * @return object Self reference
      */
     public function having($field, $value = null) {
         $join = (empty($this->having)) ? 'HAVING' : '';
@@ -375,6 +389,7 @@ class Sparrow {
      *
      * @param int $limit Number of rows to limit
      * @param int $offset Number of rows to offset
+     * @return object Self reference
      */
     public function limit($limit, $offset = null) {
         if ($limit !== null) {
@@ -392,6 +407,7 @@ class Sparrow {
      *
      * @param int $offset Number of rows to offset
      * @param int $limit Number of rows to limit
+     * @return object Self reference
      */
     public function offset($offset, $limit = null) {
         if ($offset !== null) {
@@ -405,7 +421,7 @@ class Sparrow {
     }
 
     /**
-     * Sets the distinct keywork for a query.
+     * Sets the distinct keyword for a query.
      */
     public function distinct($value = true) {
         $this->distinct = ($value) ? 'DISTINCT' : '';
@@ -432,7 +448,9 @@ class Sparrow {
     /**
      * Builds a select query.
      *
-     * @param array $fields Array of field names to select
+     * @param array|string $fields Array of field names to select
+     * @param int $limit Limit condition
+     * @param int $offset Offset condition
      * @return object Self reference
      */
     public function select($fields = '*', $limit = null, $offset = null) {
@@ -570,6 +588,7 @@ class Sparrow {
      * Sets the database connection.
      *
      * @param string|array|object $db Database connection string, array or object
+     * @throws Exception For connection error
      */
     public function setDb($db) {
         $this->db = null;
@@ -637,7 +656,7 @@ class Sparrow {
 
                     break;
 
-                case 'pdo_mysql':
+                case 'pdomysql':
                     $dsn = sprintf(
                         'mysql:host=%s;port=%d;dbname=%s',
                         $db['hostname'],
@@ -650,7 +669,7 @@ class Sparrow {
 
                     break;
 
-                case 'pdo_pgsql':
+                case 'pdopgsql':
                     $dsn = sprintf(
                         'pgsql:host=%s;port=%d;dbname=%s;user=%s;password=%s',
                         $db['hostname'],
@@ -665,7 +684,7 @@ class Sparrow {
 
                     break;
 
-                case 'pdo_sqlite':
+                case 'pdosqlite':
                     $this->db = new PDO('sqlite:/'.$db['database']);
                     $db['type'] = 'pdo';
 
@@ -732,6 +751,7 @@ class Sparrow {
      * @param string $key Cache key
      * @param int $expire Expiration time in seconds
      * @return object Query results object
+     * @throws Exception When database is not defined
      */
     public function execute($key = null, $expire = 0) {
         if (!$this->db) {
@@ -1005,6 +1025,7 @@ class Sparrow {
      * @param string $field Field name
      * @param int $expire Expiration time in seconds
      * @param string $key Cache key
+     * @return object Self reference
      */
     public function min($field, $key = null, $expire = 0) {
         $this->select('MIN('.$field.') min_value');
@@ -1022,6 +1043,7 @@ class Sparrow {
      * @param string $field Field name
      * @param int $expire Expiration time in seconds
      * @param string $key Cache key
+     * @return object Self reference
      */
     public function max($field, $key = null, $expire = 0) {
         $this->select('MAX('.$field.') max_value');
@@ -1039,6 +1061,7 @@ class Sparrow {
      * @param string $field Field name
      * @param int $expire Expiration time in seconds
      * @param string $key Cache key
+     * @return object Self reference
      */
     public function sum($field, $key = null, $expire = 0) {
         $this->select('SUM('.$field.') sum_value');
@@ -1056,6 +1079,7 @@ class Sparrow {
      * @param string $field Field name
      * @param int $expire Expiration time in seconds
      * @param string $key Cache key
+     * @return object Self reference
      */
     public function avg($field, $key = null, $expire = 0) {
         $this->select('AVG('.$field.') avg_value');
@@ -1073,6 +1097,7 @@ class Sparrow {
      * @param string $field Field name
      * @param string $key Cache key
      * @param int $expire Expiration time in seconds
+     * @return object Self reference
      */
     public function count($field = '*', $key = null, $expire = 0) {
         $this->select('COUNT('.$field.') num_rows');
@@ -1134,6 +1159,7 @@ class Sparrow {
      * Sets the cache connection.
      *
      * @param string|object $cache Cache connection string or object
+     * @throws Exception For invalid cache type
      */
     public function setCache($cache) {
         $this->cache = null;
@@ -1287,6 +1313,7 @@ class Sparrow {
      * Clear a value from the cache.
      *
      * @param string $key Cache key
+     * @return object Self reference
      */
     public function clear($key) {
         $key = $this->key_prefix.$key;
@@ -1305,7 +1332,7 @@ class Sparrow {
                 return xcache_unset($key);
 
             case 'file':
-                $file = $this->cache.'/'.$file;
+                $file = $this->cache.'/'.$key;
                 if (file_exists($file)) {
                     return unlink($file);
                 }
@@ -1364,6 +1391,7 @@ class Sparrow {
      * Sets the class.
      *
      * @param string|object $class Class name or instance
+     * @return object Self reference
      */
     public function using($class) {
         if (is_string($class)) {

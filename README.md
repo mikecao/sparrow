@@ -348,11 +348,11 @@ Using a connection object:
 
     $db->setDb($mysql);
 
-You can also use PDO for the database connection. To use the connection string or array method, prefix the database type with `pdo_`:
+You can also use PDO for the database connection. To use the connection string or array method, prefix the database type with `pdo`:
 
-    $db->setDb('pdo_mysql://admin:hunter2@localhost/mydb');
+    $db->setDb('pdomysql://admin:hunter2@localhost/mydb');
 
-The possible PDO types are `pdo_mysql`, `pdo_pgsql`, and `pdo_sqlite`.
+The possible PDO types are `pdomysql`, `pdopgsql`, and `pdosqlite`.
 
 You can also pass in any PDO object directly:
 
