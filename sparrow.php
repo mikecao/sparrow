@@ -157,9 +157,6 @@ class Sparrow {
      * @throws Exception For invalid where condition
      */
     protected function parseCondition($field, $value = null, $join = '', $escape = true) {
-        if (empty($field)) {
-            throw new Exception('Invalid where condition.');
-        }
         if (is_string($field)) {
             if ($value === null) return $join.' '.trim($field);
 
@@ -216,6 +213,9 @@ class Sparrow {
                 $join = '';
             }
             return $str;
+        }
+        else {
+            throw new Exception('Invalid where condition.');
         }
     }
 
@@ -816,11 +816,11 @@ class Sparrow {
                         $error = $this->db->error;
                     }
                     else {
-                        if (!is_bool($result)) {
+                        if (is_object($result)) {
                             $this->num_rows = $result->num_rows;
                         }
                         else {
-                            $this->affected_rows = $this->db->affected_rows - $result->num_rows;
+                            $this->affected_rows = $this->db->affected_rows;
                         }
                         $this->insert_id = $this->db->insert_id;
                     }
