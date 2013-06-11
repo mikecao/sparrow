@@ -1548,4 +1548,3 @@ class Sparrow {
         return $properties[$this->class];
     }
 }
-?>
