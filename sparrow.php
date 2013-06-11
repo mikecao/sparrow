@@ -491,7 +491,9 @@ class Sparrow {
         $keys = implode(',', array_keys($data));
         $values = implode(',', array_values(
             array_map(
-                array($this, 'quote'),
+                function ($p) {
+                    return ($p === null) ? 'null' : $this->quote($p);
+                },
                 $data
             )
         ));
@@ -522,7 +524,7 @@ class Sparrow {
 
         if (is_array($data)) {
             foreach ($data as $key => $value) {
-                $values[] = (is_numeric($key)) ? $value : $key.'='.$this->quote($value);
+                $values[] = (is_numeric($key)) ? $value : $key.'='.(($value === null)?'null':$this->quote($value));
             }
         }
         else {
