@@ -662,7 +662,7 @@ class Sparrow {
                     $dsn = sprintf(
                         'mysql:host=%s;port=%d;dbname=%s',
                         $db['hostname'],
-                        isset($db['port']) ? $db['port'] : 3307,
+                        isset($db['port']) ? $db['port'] : 3306,
                         $db['database']
                     );
 
@@ -1112,47 +1112,44 @@ class Sparrow {
     }
 
     /**
-     * Wraps quotes around a string and escapes the content.
+     * Wraps quotes around a string and escapes the content for string parameter.
      *
-     * @param string $value String value
-     * @return string Quoted string
+     * @param mixed $value mixed value
+     * @return mixed Quoted
      */
     public function quote($value) {
-        if ($this->db !== null) {
-            switch ($this->db_type) {
-                case 'pdo':
-                    $value = $this->db->quote($value);
-                    break;
+        if (is_string($value)) {
+            if ($this->db !== null) {
+                switch ($this->db_type) {
+                    case 'pdo':
+                        return $this->db->quote($value);
 
-                case 'mysqli':
-                    $value = $this->db->real_escape_string($value);
-                    break;
+                    case 'mysqli':
+                        return "'". $this->db->real_escape_string($value) . "'";
 
-                case 'mysql':
-                    $value = mysql_real_escape_string($value, $this->db);
-                    break;
+                    case 'mysql':
+                        return "'". mysql_real_escape_string($value, $this->db) . "'";
 
-                case 'pgsql':
-                    $value = pg_escape_string($this->db, $value);
-                    break;
+                    case 'pgsql':
+                        $value = pg_escape_string($this->db, $value);
+                        break;
 
-                case 'sqlite':
-                    $value = sqlite_escape_string($value);
-                    break;
+                    case 'sqlite':
+                        $value = sqlite_escape_string($value);
+                        break;
 
-                case 'sqlite3':
-                    $value = $this->db->escapeString($value); 
-                    break;
-            }            
+                    case 'sqlite3':
+                        $value = $this->db->escapeString($value);
+                        break;
+                }
+            }
+
+            $value = str_replace(
+                array('\\', "\0", "\n", "\r", "'", '"', "\x1a"), array('\\\\', '\\0', '\\n', '\\r', "\\'", '\\"', '\\Z'), $value
+            );
+            $value = "'$value'";
         }
-
-        $value = str_replace(
-            array('\\', "\0", "\n", "\r", "'", '"', "\x1a"),
-            array('\\\\', '\\0', '\\n', '\\r', "\\'", '\\"', '\\Z'),
-            $value
-        );
-
-        return "'$value'";
+        return $value;
     }
 
     /*** Cache Methods ***/
