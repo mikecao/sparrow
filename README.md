@@ -130,7 +130,7 @@ Output:
 
 ### IN Queries
 
-To use an IN statement in your where condition, user the special '@' operator
+To use an IN statement in your where condition, use the special `@` operator
 and pass in an array of values.
 
     echo $db->from('user')
@@ -167,7 +167,7 @@ Output:
 
 ### Limit and Offset
 
-To add a limit or offset to a query, you can user the `limit` and `offset` functions.
+To add a limit or offset to a query, you can use the `limit` and `offset` functions.
 
     echo $db->from('user')
         ->limit(10)
@@ -231,7 +231,7 @@ Output:
 
 ### Sorting
 
-To add sorting to a query, user the `sortAsc` and `sortDesc` functions.
+To add sorting to a query, use the `sortAsc` and `sortDesc` functions.
 
     echo $db->from('user')
         ->sortDesc('id')
@@ -764,4 +764,4 @@ Sparrow requires PHP 5.1 or greater.
 
 ## License
 
-Sparrow is released under the [MIT](http://www.opensource.org/licenses/mit-license.php) license.
+Sparrow is released under the [MIT](https://github.com/mikecao/sparrow/blob/master/LICENSE) license.
