@@ -1332,7 +1332,7 @@ class Sparrow {
                 return xcache_unset($key);
 
             case 'file':
-                $file = $this->cache.'/'.$key;
+                $file = $this->cache.'/'.md5($key);
                 if (file_exists($file)) {
                     return unlink($file);
                 }
