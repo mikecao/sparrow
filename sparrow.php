@@ -1294,10 +1294,10 @@ class Sparrow {
 
                 if ($this->is_cached = file_exists($file)) {
                     $data = unserialize(file_get_contents($file));
-                    if ($data['expire'] == 0) {
+                    if ($data['expire'] == 0 || time() < $data['expire']) {
                         return $data['value'];
                     }
-                    else if (time() > $data['expire']) {
+                    else {
                         $this->is_cached = false;
                     }
                 }
