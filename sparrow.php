@@ -625,7 +625,7 @@ class Sparrow {
                         throw new Exception('Connection error: '.mysqli_error($this->db));
                     }
 
-                    mysqli_select_db($db['database'], $this->db);
+                    mysqli_select_db( $this->db, $db['database']);
 
                     break;
 
@@ -828,7 +828,7 @@ class Sparrow {
                     break;
 
                 case 'mysql':
-                    $result = mysqli_query($this->sql, $this->db);
+                    $result = mysqli_query( $this->db, $this->sql);
 
                     if (!$result) {
                         $error = mysqli_error($this->db);
@@ -1128,7 +1128,7 @@ class Sparrow {
                         return "'".$this->db->real_escape_string($value)."'";
 
                     case 'mysql':
-                        return "'".mysqli_real_escape_string($value, $this->db)."'";
+                        return "'".mysqli_real_escape_string($this->db,$value)."'";
 
                     case 'pgsql':
                         return "'".pg_escape_string($this->db, $value)."'";
