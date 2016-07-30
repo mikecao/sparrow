@@ -13,7 +13,7 @@ include '/path/to/sparrow.php';
 $db = new Sparrow();
 
 // Select a table
-$db->from('user')
+$db->from('user');
 
 // Build a select query
 $db->select();
