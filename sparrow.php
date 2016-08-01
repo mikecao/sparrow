@@ -664,7 +664,7 @@ class Sparrow {
                         $db['database']
                     );
 
-                    $this->db = new PDO($dsn, $db['username'], $db['password']);
+                    $this->db = new PDO($dsn, $db['username'], $db['password'], array(PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8"));
                     $db['type'] = 'pdo';
 
                     break;
