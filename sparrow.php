@@ -615,17 +615,17 @@ class Sparrow {
                     break;
 
                 case 'mysql':
-                    $this->db = mysql_connect(
+                    $this->db = mysqli_connect(
                         $db['hostname'],
                         $db['username'],
                         $db['password']
                     );
 
                     if (!$this->db) {
-                        throw new Exception('Connection error: '.mysql_error());
+                        throw new Exception('Connection error: '.mysqli_error($this->db));
                     }
 
-                    mysql_select_db($db['database'], $this->db);
+                    mysqli_select_db( $this->db, $db['database']);
 
                     break;
 
@@ -828,19 +828,19 @@ class Sparrow {
                     break;
 
                 case 'mysql':
-                    $result = mysql_query($this->sql, $this->db);
+                    $result = mysqli_query( $this->db, $this->sql);
 
                     if (!$result) {
-                        $error = mysql_error();
+                        $error = mysqli_error($this->db);
                     }
                     else {
                         if (!is_bool($result)) {
-                            $this->num_rows = mysql_num_rows($result);
+                            $this->num_rows = mysqli_num_rows($result);
                         }
                         else {
-                            $this->affected_rows = mysql_affected_rows($this->db);
+                            $this->affected_rows = mysqli_affected_rows($this->db);
                         }
-                        $this->insert_id = mysql_insert_id($this->db);
+                        $this->insert_id = mysqli_insert_id($this->db);
                     }
 
                     break;
@@ -950,10 +950,10 @@ class Sparrow {
                     break;
            
                 case 'mysql':
-                    while ($row = mysql_fetch_assoc($result)) {
+                    while ($row = mysqli_fetch_assoc($result)) {
                         $data[] = $row;
                     }
-                    mysql_free_result($result);
+                    mysqli_free_result($result);
                     break;
 
                 case 'pgsql':
@@ -1128,7 +1128,7 @@ class Sparrow {
                         return "'".$this->db->real_escape_string($value)."'";
 
                     case 'mysql':
-                        return "'".mysql_real_escape_string($value, $this->db)."'";
+                        return "'".mysqli_real_escape_string($this->db,$value)."'";
 
                     case 'pgsql':
                         return "'".pg_escape_string($this->db, $value)."'";
