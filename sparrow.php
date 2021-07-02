@@ -193,7 +193,7 @@ class Sparrow {
             }
 
             if (empty($join)) { 
-                $join = ($field{0} == '|') ? ' OR' : ' AND';
+                $join = ($field[0] == '|') ? ' OR' : ' AND';
             }
 
             if (is_array($value)) {
@@ -1166,7 +1166,7 @@ class Sparrow {
 
         // Connection string
         if (is_string($cache)) {
-            if ($cache{0} == '.' || $cache{0} == '/') {
+            if ($cache[0] == '.' || $cache[0] == '/') {
                 $this->cache = $cache;
                 $this->cache_type = 'file';
             }
