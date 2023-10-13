@@ -1,0 +1,6 @@
+{
+    "name": "fadrian/sparrow",
+    "autoload": {
+        "files": [ "sparrow.php" ]
+    },
+}
