@@ -1,6 +1,44 @@
 {
-    "name": "fadrian/sparrow",
-    "autoload": {
-        "files": [ "sparrow.php" ]
-    }
+	"name": "faslatam/sparrow",
+	"authors": [
+		{
+			"name": "Mike Cao",
+			"email": "mike@mikecao.com",
+			"homepage": "http://www.mikecao.com/",
+			"role": "Original Developer"
+		},
+		{
+			"name": "Franyer Sánchez",
+			"email": "franyeradriansanchez@gmail.com",
+			"homepage": "https://faslatam.000webhostapp.com"
+		}
+	],
+	"description": "Sparrow is a simple but powerful database toolkit.",
+	"homepage": "https://github.com/fadrian06/sparrow",
+	"keywords": [
+		"orm",
+		"database",
+		"pdo"
+	],
+	"license": "MIT",
+	"scripts": {
+		"test": "phpunit",
+		"lint": "phpstan -cphpstan.neon --no-progress"
+	},
+	"autoload": {
+		"files": [
+			"src/Sparrow.php"
+		]
+	},
+	"require-dev": {
+		"phpunit/phpunit": "^10.4",
+		"phpstan/phpstan": "^1.10",
+		"phpstan/extension-installer": "^1.3",
+		"phpstan/phpstan-strict-rules": "^1.5"
+	},
+	"config": {
+		"allow-plugins": {
+			"phpstan/extension-installer": true
+		}
+	}
 }

@@ -1,0 +1,11 @@
+includes:
+  - vendor/phpstan/phpstan/conf/bleedingEdge.neon
+
+parameters:
+  level: 0
+  phpVersion: 50100
+  paths:
+    - sparrow.php
+  excludePaths:
+    - tests
+    - vendor
