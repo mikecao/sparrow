@@ -3,6 +3,10 @@
 Sparrow is a simple but powerful database toolkit. Sparrow is a fluent SQL builder, database abstraction layer, cache manager,
 query statistics generator, and micro-ORM all rolled into a single class file.
 
+## Requirements
+
+Sparrow requires PHP 5.1 or greater.
+
 ## Building SQL
 
 ```php
@@ -969,10 +973,6 @@ error message. If you want to display the generated SQL along with the error mes
 ```php
 $db->show_sql = true;
 ```
-
-## Requirements
-
-Sparrow requires PHP 5.1 or greater.
 
 ## License
 

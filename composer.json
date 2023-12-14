@@ -22,7 +22,7 @@
 	],
 	"license": "MIT",
 	"scripts": {
-		"test": "phpunit",
+		"test": "phpunit --no-progress",
 		"lint": "phpstan -cphpstan.neon --no-progress"
 	},
 	"autoload": {

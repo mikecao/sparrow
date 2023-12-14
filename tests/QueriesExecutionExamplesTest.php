@@ -4,64 +4,147 @@ use PHPUnit\Framework\TestCase;
 use QueryBuilderExamplesTest as Test;
 
 class QueriesExecutionExamplesTest extends TestCase {
-  function testCanConnectToMysqlDatabaseFromConnectionString() {
-    $sparrow = Test::sparrow(true);
-    $sparrow->setDb('mysql://root:root@localhost/test');
+  function testCanFetchMultipleRecords() {
+    $details = self::sparrow()->where('OrderDetailID >', 100)->many();
 
-    self::assertInstanceOf('mysqli', $sparrow->getDb());
+    $expected = array(
+      'OrderDetailID' => 101,
+      'OrderID' => 10285,
+      'ProductID' => 40,
+      'Quantity' => 40
+    );
+
+    self::assertCount(418, $details);
+    self::assertSame($expected, $details[0]);
   }
 
-  function testCanConnectToMysqlDatabaseFromConnectionArray() {
-    $sparrow = Test::sparrow(true);
-    $sparrow->setDb(array(
-      'type' => 'mysql',
-      'hostname' => 'localhost',
-      'database' => 'test',
-      'username' => 'root',
-      'password' => 'root',
-      'port' => 3306
-    ));
+  function testCanFetchOneRecord() {
+    $details = self::sparrow()->where('OrderDetailID', 123)->one();
 
-    self::assertInstanceOf('mysqli', $sparrow->getDb());
+    $expected = array(
+      'OrderDetailID' => 123,
+      'OrderID' => 10293,
+      'ProductID' => 75,
+      'Quantity' => 6
+    );
+
+    self::assertSame($expected, $details);
   }
 
-  function testCanConnectToMysqlDatabaseFromAConnectionObject() {
-    $mysql = new mysqli('localhost', 'root', 'root');
-    $mysql->select_db('test');
+  function testCanFetchASingleRecordValue() {
+    $orderID = self::sparrow()->where('OrderDetailID', 123)->value('OrderID');
 
-    $sparrow = Test::sparrow(true);
-    $sparrow->setDb($mysql);
-
-    self::assertInstanceOf('mysqli', $sparrow->getDb());
+    self::assertSame(10293, $orderID);
   }
 
-  function testCanConnectToMysqlDatabaseFromAPdoConnectionString() {
-    $sparrow = Test::sparrow(true);
-    $sparrow->setDb('pdomysql://root:root@localhost/test');
+  function testCanFetchOneRecordWithSpecifiedFields() {
+    $details = self::sparrow()
+      ->where('OrderDetailID', 123)
+      ->select(array('OrderDetailID', 'OrderID'))
+      ->one();
 
-    self::assertInstanceOf('PDO', $sparrow->getDb());
+    $expected = array('OrderDetailID' => 123, 'OrderID' => 10293);
+
+    self::assertSame($expected, $details);
   }
 
-  function testCanConnectToMysqlDatabaseFromAPdoObject() {
-    $pdo = new PDO('mysql:host=localhost;dbname=test', 'root', 'root');
+  function testCanDeleteOneRecord() {
+    $sparrow = self::sparrow();
+    $sparrow
+      ->sql(file_get_contents(__DIR__ . '/UsersTable.sql'))
+      ->execute();
 
-    $sparrow = Test::sparrow(true);
-    $sparrow->setDb($pdo);
+    $userID = hash('sha256', rand());
+    $data = array('UserID' => $userID, 'UserName' => 'Franyer');
 
-    self::assertInstanceOf('PDO', $sparrow->getDb());
+    $sparrow
+      ->from('Users')
+      ->insert($data)
+      ->execute();
+
+    $userInserted = self::sparrow()
+      ->from('Users')
+      ->where('UserID', $userID)
+      ->one();
+
+    self::assertSame($data, $userInserted);
+
+    $sparrow
+      ->delete(array('UserID' => $userID))
+      ->execute();
+
+    $lastSQL = $sparrow->sql();
+    $expected = "DELETE FROM Users WHERE UserID='$userID'";
+
+    self::assertSame($lastSQL, $expected);
+
+    $mustBeEmpty = $sparrow->where('UserID', $userID)->one();
+
+    self::assertSame(array(), $mustBeEmpty);
   }
 
-  function testCanConnectToSqliteDatabaseFromConnectionString() {
-    $sparrow = Test::sparrow(true);
-    $sparrow->setDb('sqlite://' . __DIR__ . '/test.db');
+  function testCanExecuteCustomQueries() {
+    $sparrow = self::sparrow();
+    $categories = $sparrow->sql('SELECT * FROM Categories')->many();
 
-    self::assertInstanceOf('SQLite3', $sparrow->getDb());
+    $expected = array(
+      'CategoryID' => 1,
+      'CategoryName' => 'Beverages',
+      'Description' => 'Soft drinks, coffees, teas, beers, and ales'
+    );
+
+    self::assertCount(8, $categories);
+    self::assertSame($expected, $categories[0]);
+
+    $category = $sparrow->sql('SELECT * FROM Categories WHERE CategoryID = 1')->one();
+
+    self::assertSame($expected, $category);
+
+    $userID = hash('sha256', rand());
+    $data = array('UserID' => $userID, 'UserName' => 'Franyer');
+
+    self::sparrow()
+      ->from('Users')
+      ->insert($data)
+      ->execute();
+
+    $sparrow
+      ->sql("UPDATE Users SET UserName = 'Adrián' WHERE UserID = '$userID'")
+      ->execute();
+
+    $userUpdated = $sparrow->sql("SELECT UserName FROM Users WHERE UserID = '$userID'")->one();
+
+    self::assertSame('Adrián', $userUpdated['UserName']);
+
+    $sparrow->sql("DELETE FROM Users WHERE UserID = '$userID'")->execute();
   }
 
-  function testCanConnectToSqliteDatabaseFromPdoConnectionString() {
-    $sparrow = Test::sparrow(true);
-    $sparrow->setDb('pdosqlite://' . __DIR__ . '/test.db');
+  function testCanEscapeSpecialCharacters() {
+    $sparrow = self::sparrow();
+    $name = "O'Dell";
 
-    self::assertInstanceOf('PDO', $sparrow->getDb());
+    $result = sprintf('SELECT * FROM user WHERE name = %s', $sparrow->quote($name));
+    $expected = "SELECT * FROM user WHERE name = 'O\'Dell'";
+
+    self::assertSame($expected, $result);
+  }
+
+  function testCanFillQueryProperties() {
+    $sparrow = self::sparrow();
+    $sql = 'SELECT * FROM Categories';
+
+    $sparrow->sql($sql)->many();
+    $sparrow->sql('CREATE TABLE test (id PRIMARY KEY AUTOINCREMENT)');
+
+    self::assertSame($sql, $sparrow->last_query);
+    self::assertSame(8, $sparrow->num_rows);
+  }
+
+  private static function sparrow() {
+    $sparrow = Test::sparrow(true);
+    $sparrow->setDb('sqlite://' . __DIR__ . '/Northwind.db');
+    $sparrow->from('OrderDetails');
+
+    return $sparrow;
   }
 }

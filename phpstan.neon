@@ -3,9 +3,9 @@ includes:
 
 parameters:
   level: 0
-  phpVersion: 50100
+  phpVersion: 70100
   paths:
-    - sparrow.php
+    - src/sparrow.php
   excludePaths:
     - tests
     - vendor

@@ -1,7 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 /**
- * Sparrow: A simple database toolkit.
+ * Sparrow: A simple database toolkit
  *
  * @copyright Copyright (c) 2011, Mike Cao <mike@mikecao.com>
  * @license   MIT, http://www.opensource.org/licenses/mit-license.php
@@ -20,6 +22,7 @@ class Sparrow {
 
   protected $db;
   protected $db_type;
+  /** @var object|string */
   protected $cache;
   protected $cache_type;
   protected $stats;
@@ -42,23 +45,22 @@ class Sparrow {
   public $show_sql = false;
   public $key_prefix = '';
 
-  /**
-   * Class constructor.
-   */
+  /** Class constructor */
   public function __construct() {
   }
 
-  /** Core Methods **/
-
+  //////////////////
+  // Core Methods //
+  //////////////////
   /**
-   * Joins string tokens into a SQL statement.
+   * Joins string tokens into a SQL statement
    *
    * @param string $sql SQL statement
    * @param string $input Input string to append
    * @return string New SQL statement
    */
   public function build($sql, $input) {
-    return (strlen($input) > 0) ? ($sql . ' ' . $input) : $sql;
+    return strlen($input) > 0 ? "$sql $input" : $sql;
   }
 
   /**
@@ -72,7 +74,7 @@ class Sparrow {
     $connection = str_replace('\\', '/', $connection);
     $url = parse_url($connection);
 
-    if (empty($url)) {
+    if (!$url) {
       throw new Exception('Invalid connection string.');
     }
 
@@ -88,9 +90,7 @@ class Sparrow {
     return $cfg;
   }
 
-  /**
-   * Gets the query statistics.
-   */
+  /** Gets the query statistics */
   public function getStats() {
     $this->stats['total_time'] = 0;
     $this->stats['num_queries'] = 0;
@@ -113,27 +113,21 @@ class Sparrow {
     return $this->stats;
   }
 
-  /**
-   * Checks whether the table property has been set.
-   */
+  /** Checks whether the table property has been set */
   public function checkTable() {
     if (!$this->table) {
       throw new Exception('Table is not defined.');
     }
   }
 
-  /**
-   * Checks whether the class property has been set.
-   */
+  /** Checks whether the class property has been set */
   public function checkClass() {
     if (!$this->class) {
       throw new Exception('Class is not defined.');
     }
   }
 
-  /**
-   * Resets class properties.
-   */
+  /** Resets class properties */
   public function reset() {
     $this->where = '';
     $this->joins = '';
@@ -146,8 +140,9 @@ class Sparrow {
     $this->sql = '';
   }
 
-  /*** SQL Builder Methods ***/
-
+  /////////////////////////
+  // SQL Builder Methods //
+  /////////////////////////
   /**
    * Parses a condition statement.
    *
@@ -168,7 +163,7 @@ class Sparrow {
         list($field, $operator) = explode(' ', $field);
       }
 
-      if (!empty($operator)) {
+      if ($operator) {
         switch ($operator) {
           case '%':
             $condition = ' LIKE ';
@@ -193,8 +188,8 @@ class Sparrow {
         $condition = '=';
       }
 
-      if (empty($join)) {
-        $join = ($field[0] == '|') ? ' OR' : ' AND';
+      if (!$join) {
+        $join = ($field[0] === '|') ? ' OR' : ' AND';
       }
 
       if (is_array($value)) {
@@ -207,8 +202,8 @@ class Sparrow {
       return $join . ' ' . str_replace('|', '', $field) . $condition . $value;
     } else if (is_array($field)) {
       $str = '';
-      foreach ($field as $key => $value) {
-        $str .= $this->parseCondition($key, $value, $join, $escape);
+      foreach ($field as $fieldName => $fieldValue) {
+        $str .= $this->parseCondition($fieldName, $fieldValue, $join, $escape);
         $join = '';
       }
       return $str;
@@ -250,7 +245,7 @@ class Sparrow {
       'FULL OUTER'
     );
 
-    if (!in_array($type, $joins)) {
+    if (!in_array($type, $joins, true)) {
       throw new Exception('Invalid join type.');
     }
 
@@ -301,7 +296,7 @@ class Sparrow {
    * @return static Self reference
    */
   public function where($field, $value = null) {
-    $join = (empty($this->where)) ? 'WHERE' : '';
+    $join = !$this->where ? 'WHERE' : '';
     $this->where .= $this->parseCondition($field, $value, $join);
 
     return $this;
@@ -335,7 +330,7 @@ class Sparrow {
    * @return static Self reference
    */
   public function orderBy($field, $direction = 'ASC') {
-    $join = (empty($this->order)) ? 'ORDER BY' : ',';
+    $join = !$this->order ? 'ORDER BY' : ',';
 
     if (is_array($field)) {
       foreach ($field as $key => $value) {
@@ -359,7 +354,7 @@ class Sparrow {
    * @return static Self reference
    */
   public function groupBy($field) {
-    $join = (empty($this->order)) ? 'GROUP BY' : ',';
+    $join = !$this->order ? 'GROUP BY' : ',';
     $fields = (is_array($field)) ? implode(',', $field) : $field;
 
     $this->groups .= $join . ' ' . $fields;
@@ -375,7 +370,7 @@ class Sparrow {
    * @return static Self reference
    */
   public function having($field, $value = null) {
-    $join = (empty($this->having)) ? 'HAVING' : '';
+    $join = !$this->having ? 'HAVING' : '';
     $this->having .= $this->parseCondition($field, $value, $join);
 
     return $this;
@@ -483,7 +478,7 @@ class Sparrow {
   public function insert(array $data) {
     $this->checkTable();
 
-    if (empty($data)) return $this;
+    if (!$data) return $this;
 
     $keys = implode(',', array_keys($data));
     $values = implode(',', array_values(
@@ -513,7 +508,7 @@ class Sparrow {
   public function update($data) {
     $this->checkTable();
 
-    if (empty($data)) return $this;
+    if (!$data) return $this;
 
     $values = array();
 
@@ -522,7 +517,7 @@ class Sparrow {
         $values[] = (is_numeric($key)) ? $value : $key . '=' . $this->quote($value);
       }
     } else {
-      $values[] = (string)$data;
+      $values[] = $data;
     }
 
     $this->sql(array(
@@ -562,7 +557,7 @@ class Sparrow {
    * Gets or sets the SQL statement.
    *
    * @param string|array SQL statement
-   * @return string SQL statement
+   * @return string|static SQL statement
    */
   public function sql($sql = null) {
     if ($sql !== null) {
@@ -578,8 +573,9 @@ class Sparrow {
     return $this->sql;
   }
 
-  /** Database Access Methods **/
-
+  /////////////////////////////
+  // Database Access Methods //
+  /////////////////////////////
   /**
    * Sets the database connection.
    *
@@ -596,8 +592,8 @@ class Sparrow {
     // Connection information
     elseif (is_array($db)) {
       $quotes = array('"', "'");
-      if ((in_array($db['hostname'][0], $quotes)
-        && in_array($db['database'][-1], $quotes))
+      if ((in_array($db['hostname'][0], $quotes, true)
+          && in_array($db['database'][-1], $quotes, true))
         || mb_strlen($db['hostname']) <= 2
       ) {
         $db['hostname'] .= ":/{$db['database']}";
@@ -675,7 +671,7 @@ class Sparrow {
           break;
       }
 
-      if ($this->db == null) {
+      if (!$this->db) {
         throw new Exception('Undefined database.');
       }
 
@@ -685,7 +681,7 @@ class Sparrow {
     else {
       $type = $this->getDbType($db);
 
-      if (!in_array($type, self::$db_types)) {
+      if (!in_array($type, self::$db_types, true)) {
         throw new Exception('Invalid database type.');
       }
 
@@ -733,7 +729,7 @@ class Sparrow {
    *
    * @param string $key Cache key
    * @param int $expire Expiration time in seconds
-   * @return static Query results object
+   * @return mixed Query results object
    * @throws Exception When database is not defined
    */
   public function execute($key = null, $expire = 0) {
@@ -758,7 +754,7 @@ class Sparrow {
     $this->last_query = $this->sql;
 
     if ($this->stats_enabled) {
-      if (empty($this->stats)) {
+      if (!$this->stats) {
         $this->stats = array(
           'queries' => array()
         );
@@ -767,7 +763,7 @@ class Sparrow {
       $this->query_time = microtime(true);
     }
 
-    if (!empty($this->sql)) {
+    if ($this->sql) {
       $error = null;
 
       switch ($this->db_type) {
@@ -790,6 +786,7 @@ class Sparrow {
 
           break;
 
+        case 'mysql':
         case 'mysqli':
           $result = $this->db->query($this->sql);
 
@@ -802,22 +799,6 @@ class Sparrow {
               $this->affected_rows = $this->db->affected_rows;
             }
             $this->insert_id = $this->db->insert_id;
-          }
-
-          break;
-
-        case 'mysql':
-          $result = mysql_query($this->sql, $this->db);
-
-          if (!$result) {
-            $error = mysql_error();
-          } else {
-            if (!is_bool($result)) {
-              $this->num_rows = mysql_num_rows($result);
-            } else {
-              $this->affected_rows = mysql_affected_rows($this->db);
-            }
-            $this->insert_id = mysql_insert_id($this->db);
           }
 
           break;
@@ -836,16 +817,6 @@ class Sparrow {
           break;
 
         case 'sqlite':
-          $result = sqlite_query($this->db, $this->sql, SQLITE_ASSOC, $error);
-
-          if ($result !== false) {
-            $this->num_rows = sqlite_num_rows($result);
-            $this->affected_rows = sqlite_changes($this->db);
-            $this->insert_id = sqlite_last_insert_rowid($this->db);
-          }
-
-          break;
-
         case 'sqlite3':
           $result = $this->db->query($this->sql);
 
@@ -889,7 +860,7 @@ class Sparrow {
    * @return array Rows
    */
   public function many($key = null, $expire = 0) {
-    if (empty($this->sql)) {
+    if (!$this->sql) {
       $this->select();
     }
 
@@ -911,6 +882,7 @@ class Sparrow {
 
           break;
 
+        case 'mysql':
         case 'mysqli':
           if (function_exists('mysqli_fetch_all')) {
             $data = $result->fetch_all(MYSQLI_ASSOC);
@@ -922,22 +894,12 @@ class Sparrow {
           $result->close();
           break;
 
-        case 'mysql':
-          while ($row = mysql_fetch_assoc($result)) {
-            $data[] = $row;
-          }
-          mysql_free_result($result);
-          break;
-
         case 'pgsql':
           $data = pg_fetch_all($result);
           pg_free_result($result);
           break;
 
         case 'sqlite':
-          $data = sqlite_fetch_all($result, SQLITE_ASSOC);
-          break;
-
         case 'sqlite3':
           if ($result) {
             while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
@@ -965,13 +927,13 @@ class Sparrow {
    * @return array Row
    */
   public function one($key = null, $expire = 0) {
-    if (empty($this->sql)) {
+    if (!$this->sql) {
       $this->limit(1)->select();
     }
 
     $data = $this->many($key, $expire);
 
-    $row = (!empty($data)) ? $data[0] : array();
+    $row = $data ? $data[0] : array();
 
     return $row;
   }
@@ -987,7 +949,7 @@ class Sparrow {
   public function value($name, $key = null, $expire = 0) {
     $row = $this->one($key, $expire);
 
-    $value = (!empty($row)) ? $row[$name] : null;
+    $value = $row ? $row[$name] : null;
 
     return $value;
   }
@@ -1097,20 +1059,16 @@ class Sparrow {
           case 'pdo':
             return $this->db->quote($value);
 
+          case 'mysql':
           case 'mysqli':
             return "'" . $this->db->real_escape_string($value) . "'";
-
-          case 'mysql':
-            return "'" . mysql_real_escape_string($value, $this->db) . "'";
 
           case 'pgsql':
             return "'" . pg_escape_string($this->db, $value) . "'";
 
           case 'sqlite':
-            return "'" . sqlite_escape_string($value) . "'";
-
           case 'sqlite3':
-            return "'" . $this->db->escapeString($value) . "'";
+            return "'" . addslashes($value) . "'";
         }
       }
 
@@ -1126,8 +1084,9 @@ class Sparrow {
     return $value;
   }
 
-  /*** Cache Methods ***/
-
+  ///////////////////
+  // Cache Methods //
+  ///////////////////
   /**
    * Sets the cache connection.
    *
@@ -1139,7 +1098,7 @@ class Sparrow {
 
     // Connection string
     if (is_string($cache)) {
-      if ($cache[0] == '.' || $cache[0] == '/') {
+      if ($cache[0] === '.' || $cache[0] === '/') {
         $this->cache = $cache;
         $this->cache_type = 'file';
       } else {
@@ -1175,7 +1134,7 @@ class Sparrow {
     else if (is_object($cache)) {
       $type = strtolower(get_class($cache));
 
-      if (!in_array($type, self::$cache_types)) {
+      if (!in_array($type, self::$cache_types, true)) {
         throw new Exception('Invalid cache type.');
       }
 
@@ -1246,7 +1205,7 @@ class Sparrow {
     switch ($this->cache_type) {
       case 'memcached':
         $value = $this->cache->get($key);
-        $this->is_cached = ($this->cache->getResultCode() == Memcached::RES_SUCCESS);
+        $this->is_cached = ($this->cache->getResultCode() === Memcached::RES_SUCCESS);
         return $value;
 
       case 'memcache':
@@ -1266,7 +1225,7 @@ class Sparrow {
 
         if ($this->is_cached = file_exists($file)) {
           $data = unserialize(file_get_contents($file));
-          if ($data['expire'] == 0 || time() < $data['expire']) {
+          if ($data['expire'] === 0 || time() < $data['expire']) {
             return $data['value'];
           } else {
             $this->is_cached = false;
@@ -1335,14 +1294,15 @@ class Sparrow {
         apc_clear_cache();
         break;
 
-      case 'xcache':
-        xcache_clear_cache();
-        break;
+      // TODO implement xcache flush
+      // case 'xcache':
+      //   xcache_clear_cache();
+      //   break;
 
       case 'file':
         if ($handle = opendir($this->cache)) {
           while (false !== ($file = readdir($handle))) {
-            if ($file != '.' && $file != '..') {
+            if ($file !== '.' && $file !== '..') {
               unlink($this->cache . '/' . $file);
             }
           }
@@ -1356,8 +1316,9 @@ class Sparrow {
     }
   }
 
-  /*** Object Methods ***/
-
+  ////////////////////
+  // Object Methods //
+  ////////////////////
   /**
    * Sets the class.
    *
@@ -1417,7 +1378,7 @@ class Sparrow {
       }
     }
 
-    if (empty($this->sql)) {
+    if (!$this->sql) {
       $this->select();
     }
 
@@ -1428,7 +1389,7 @@ class Sparrow {
       $objects[] = $this->load(new $this->class, $row);
     }
 
-    return (sizeof($objects) == 1) ? $objects[0] : $objects;
+    return (count($objects) === 1) ? $objects[0] : $objects;
   }
 
   /**
@@ -1492,7 +1453,7 @@ class Sparrow {
   /**
    * Gets class properties.
    *
-   * @return static Class properties
+   * @return object Class properties
    */
   public function getProperties() {
     static $properties = array();
