@@ -1,0 +1,23 @@
+{
+  "folders": [
+    {
+      "path": ".",
+      "name": "Sparrow",
+    }
+  ],
+  "settings": {
+    "LSP": {
+      "formatters": {
+        "embedding.php": "LSP-intelephense",
+      },
+      "LSP-html": {
+        "enabled": false
+      },
+      "LSP-intelephense": {
+        "settings": {
+          "intelephense.environment.phpVersion": "5.1.0"
+        }
+      }
+    },
+  },
+}

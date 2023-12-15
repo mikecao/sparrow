@@ -3,14 +3,18 @@
 Sparrow is a simple but powerful database toolkit. Sparrow is a fluent SQL builder, database abstraction layer, cache manager,
 query statistics generator, and micro-ORM all rolled into a single class file.
 
+## Requirements
+
+Sparrow requires PHP 5.1 or greater.
+
 ## Building SQL
 
 ```php
 // Include the library
-include '/path/to/sparrow.php';
+include '/path/to/Sparrow.php';
 
 // Declare the class instance
-$db = new Sparrow();
+$db = new Sparrow;
 
 // Select a table
 $db->from('user');
@@ -42,31 +46,31 @@ To add where conditions to your query, use the `where` function.
 
 ```php
 echo $db->from('user')
-    ->where('id', 123)
-    ->select()
-    ->sql();
+  ->where('id', 123)
+  ->select()
+  ->sql();
 ```
 
 Output:
 
 ```sql
-SELECT * FROM user WHERE id = 123
+SELECT * FROM user WHERE id=123
 ```
 
 You can call where multiple times to add multiple conditions.
 
 ```php
 echo $db->from('user')
-    ->where('id', 123)
-    ->where('name', 'bob')
-    ->select()
-    ->sql();
+  ->where('id', 123)
+  ->where('name', 'bob')
+  ->select()
+  ->sql();
 ```
 
 Output:
 
 ```sql
-SELECT * FROM user WHERE id = 123 AND name = 'bob'
+SELECT * FROM user WHERE id=123 AND name='bob'
 ```
 
 You can also pass an array to the where function. The following would produce the same output.
@@ -77,18 +81,18 @@ $where = array('id' => 123, 'name' => 'bob');
 
 ```php
 echo $db->from('user')
-    ->where($where)
-    ->select()
-    ->sql();
+  ->where($where)
+  ->select()
+  ->sql();
 ```
 
 You can even pass in a string literal.
 
 ```php
 echo $db->from('user')
-    ->where('id = 99')
-    ->select()
-    ->sql();
+  ->where('id = 99')
+  ->select()
+  ->sql();
 ```
 
 Output:
@@ -104,15 +108,15 @@ them after the field declaration.
 
 ```php
 echo $db->from('user')
-    ->where('id >', 123)
-    ->select()
-    ->sql();
+  ->where('id >', 123)
+  ->select()
+  ->sql();
 ```
 
 Output:
 
 ```sql
-SELECT * FROM user WHERE id > 123;
+SELECT * FROM user WHERE id>123;
 ```
 
 ### OR Queries
@@ -122,16 +126,16 @@ place a `|` delimiter before the field name.
 
 ```php
 echo $db->from('user')
-    ->where('id <', 10)
-    ->where('|id >', 20)
-    ->select()
-    ->sql();
+  ->where('id <', 10)
+  ->where('|id >', 20)
+  ->select()
+  ->sql();
 ```
 
 Output:
 
 ```sql
-SELECT * FROM user WHERE id < 10 OR id > 20
+SELECT * FROM user WHERE id<10 OR id>20
 ```
 
 ### LIKE Queries
@@ -140,9 +144,9 @@ To build a LIKE query you can use the special `%` operator.
 
 ```php
 echo $db->from('user')
-    ->where('name %', '%bob%')
-    ->select()
-    ->sql();
+  ->where('name %', '%bob%')
+  ->select()
+  ->sql();
 ```
 
 Output:
@@ -155,9 +159,9 @@ To build a NOT LIKE query, add a `!` before the `%` operator.
 
 ```php
 echo $db->from('user')
-    ->where('name !%', '%bob%')
-    ->select()
-    ->sql();
+  ->where('name !%', '%bob%')
+  ->select()
+  ->sql();
 ```
 
 Output:
@@ -173,30 +177,30 @@ and pass in an array of values.
 
 ```php
 echo $db->from('user')
-    ->where('id @', array(10, 20, 30))
-    ->select()
-    ->sql();
+  ->where('id @', array(10, 20, 30))
+  ->select()
+  ->sql();
 ```
 
 Output:
 
 ```sql
-SELECT * FROM user WHERE id IN (10, 20, 30)
+SELECT * FROM user WHERE id IN (10,20,30)
 ```
 
 To build a NOT IN query, add a `!` before the `@` operator.
 
 ```php
 echo $db->from('user')
-    ->where('id !@', array(10, 20, 30))
-    ->select()
-    ->sql();
+  ->where('id !@', array(10, 20, 30))
+  ->select()
+  ->sql();
 ```
 
 Output:
 
 ```sql
-SELECT * FROM user WHERE id NOT IN (10, 20, 30)
+SELECT * FROM user WHERE id NOT IN (10,20,30)
 ```
 
 ### Selecting Fields
@@ -205,14 +209,14 @@ To select specific fields, pass an array in to the `select` function.
 
 ```php
 echo $db->from('user')
-    ->select(array('id','name'))
-    ->sql();
+  ->select(array('id','name'))
+  ->sql();
 ```
 
 Output:
 
 ```sql
-SELECT id, name FROM user
+SELECT id,name FROM user
 ```
 
 ### Limit and Offset
@@ -221,10 +225,10 @@ To add a limit or offset to a query, you can use the `limit` and `offset` functi
 
 ```php
 echo $db->from('user')
-    ->limit(10)
-    ->offset(20)
-    ->select()
-    ->sql();
+  ->limit(10)
+  ->offset(20)
+  ->select()
+  ->sql();
 ```
 
 Output:
@@ -237,8 +241,8 @@ You can also pass in additional parameters to the `select` function.
 
 ```php
 echo $db->from('user')
-    ->select('*', 50, 10)
-    ->sql();
+  ->select('*', 50, 10)
+  ->sql();
 ```
 
 Output:
@@ -253,9 +257,9 @@ To add a DISTINCT keyword to your query, call the `distinct` function.
 
 ```php
 echo $db->from('user')
-    ->distinct()
-    ->select('name')
-    ->sql();
+  ->distinct()
+  ->select('name')
+  ->sql();
 ```
 
 Output:
@@ -270,15 +274,15 @@ To add a table join, use the `join` function and pass in an array of fields to j
 
 ```php
 echo $db->from('user')
-    ->join('role', array('role.id' => 'user.id'))
-    ->select()
-    ->sql();
+  ->join('role', array('role.id' => 'user.id'))
+  ->select()
+  ->sql();
 ```
 
 Output:
 
 ```sql
-SELECT * FROM user INNER JOIN role ON role.id = user.id
+SELECT * FROM user INNER JOIN role ON role.id=user.id
 ```
 
 The default join type is an `INNER` join. To build other types of joins you can use
@@ -288,15 +292,15 @@ The join array works just like where conditions, so you can use custom operators
 
 ```php
 echo $db->from('user')
-    ->join('role', array('role.id' => 'user.id', 'role.id >' => 10))
-    ->select()
-    ->sql();
+  ->join('role', array('role.id' => 'user.id', 'role.id >' => 10))
+  ->select()
+  ->sql();
 ```
 
 Output:
 
 ```sql
-SELECT * FROM user INNER JOIN role ON role.id = user.id AND role.id > 10
+SELECT * FROM user INNER JOIN role ON role.id=user.id AND role.id>10
 ```
 
 ### Sorting
@@ -305,9 +309,9 @@ To add sorting to a query, use the `sortAsc` and `sortDesc` functions.
 
 ```php
 echo $db->from('user')
-    ->sortDesc('id')
-    ->select()
-    ->sql();
+  ->sortDesc('id')
+  ->select()
+  ->sql();
 ```
 
 Output:
@@ -320,9 +324,9 @@ You can also pass an array to the sort functions.
 
 ```php
 echo $db->from('user')
-    ->sortAsc(array('rank','name'))
-    ->select()
-    ->sql();
+  ->sortAsc(array('rank','name'))
+  ->select()
+  ->sql();
 ```
 
 Output:
@@ -337,15 +341,15 @@ To add a field to group by, use the `groupBy` function.
 
 ```php
 echo $db->from('user')
-    ->groupBy('points')
-    ->select(array('id','count(*)'))
-    ->sql();
+  ->groupBy('points')
+  ->select(array('id','count(*)'))
+  ->sql();
 ```
 
 Output:
 
 ```sql
-SELECT id, count(*) FROM user GROUP BY points;
+SELECT id, count(*) FROM user GROUP BY points
 ```
 
 ### Insert Queries
@@ -356,14 +360,14 @@ To build an insert query, pass in an array of data to the `insert` function.
 $data = array('id' => 123, 'name' => 'bob');
 
 echo $db->from('user')
-    ->insert($data)
-    ->sql();
+  ->insert($data)
+  ->sql();
 ```
 
 Output:
 
 ```sql
-INSERT INTO user (id, name) VALUES (123, 'bob')
+INSERT INTO user (id,name) VALUES (123,'bob')
 ```
 
 ### Update Queries
@@ -375,15 +379,15 @@ $data = array('name' => 'bob', 'email' => 'bob@aol.com');
 $where = array('id' => 123);
 
 echo $db->from('user')
-    ->where($where)
-    ->update($data)
-    ->sql();
+  ->where($where)
+  ->update($data)
+  ->sql();
 ```
 
 Output:
 
 ```sql
-UPDATE user SET name = 'bob', email = 'bob@aol.com' WHERE id = 123
+UPDATE user SET name='bob',email='bob@aol.com' WHERE id=123
 ```
 
 ### Delete Queries
@@ -392,15 +396,15 @@ To build a delete query, use the `delete` function.
 
 ```php
 echo $db->from('user')
-    ->where('id', 123)
-    ->delete()
-    ->sql();
+  ->where('id', 123)
+  ->delete()
+  ->sql();
 ```
 
 Output:
 
 ```sql
-DELETE FROM user WHERE id = 123
+DELETE FROM user WHERE id=123
 ```
 
 ## Executing Queries
@@ -418,21 +422,25 @@ $db->setDb('mysql://admin:hunter2@localhost/mydb');
 
 The connection string uses the following format:
 
+```
 type://username:password@hostname[:port]/database
+```
 
 For sqlite, you need to use:
 
+```
 type://database
+```
 
 Using a connection array:
 
 ```php
 $db->setDb(array(
-    'type' => 'mysql',
-    'hostname' => 'localhost',
-    'database' => 'mydb',
-    'username' => 'admin',
-    'password' => 'hunter2'
+  'type' => 'mysql',
+  'hostname' => 'localhost',
+  'database' => 'mydb',
+  'username' => 'admin',
+  'password' => 'hunter2'
 ));
 ```
 
@@ -441,9 +449,9 @@ The possible array options are `type`, `hostname`, `database`, `username`, `pass
 Using a connection object:
 
 ```php
-$mysql = mysql_connect('localhost', 'admin', 'hunter2');
+$mysql = new mysqli('localhost', 'admin', 'hunter2');
 
-mysql_select_db('mydb');
+$mysql->select_db('mydb');
 
 $db->setDb($mysql);
 ```
@@ -470,16 +478,16 @@ To fetch multiple records, use the `many` function.
 
 ```php
 $rows = $db->from('user')
-    ->where('id >', 100)
-    ->many();
+  ->where('id >', 100)
+  ->many();
 ```
 
 The result returned is an array of associative arrays:
 
 ```php
 array(
-    array('id' => 101, 'name' => 'joe'),
-    array('id' => 102, 'name' => 'ted');
+  array('id' => 101, 'name' => 'joe'),
+  array('id' => 102, 'name' => 'ted');
 )
 ```
 
@@ -487,8 +495,8 @@ To fetch a single record, use the `one` function.
 
 ```php
 $row = $db->from('user')
-    ->where('id', 123)
-    ->one();
+  ->where('id', 123)
+  ->one();
 ```
 
 The result returned is a single associative array:
@@ -501,8 +509,8 @@ To fetch the value of a column, use the `value` function and pass in the name of
 
 ```php
 $username = $db->from('user')
-    ->where('id', 123)
-    ->value('username');
+  ->where('id', 123)
+  ->value('username');
 ```
 
 All the fetch functions automatically perform a select, so you don't need to include the `select` function
@@ -510,9 +518,9 @@ unless you want to specify the fields to return.
 
 ```php
 $row = $db->from('user')
-    ->where('id', 123)
-    ->select(array('id', 'name'))
-    ->one();
+  ->where('id', 123)
+  ->select(array('id', 'name'))
+  ->one();
 ```
 
 ### Non-queries
@@ -521,9 +529,9 @@ For non-queries like update, insert and delete, use the `execute` function after
 
 ```php
 $db->from('user')
-    ->where('id', 123)
-    ->delete()
-    ->execute();
+  ->where('id', 123)
+  ->delete()
+  ->execute();
 ```
 
 Executes:
@@ -620,7 +628,7 @@ You can also access the database object directly by using the  `getDb` function.
 ```php
 $mysql = $db->getDb();
 
-mysql_info($mysql);
+$mysql->info;
 ```
 
 ## Caching
@@ -636,7 +644,7 @@ $db->setCache('memcache://localhost:11211');
 Using a cache object:
 
 ```php
-$cache = new Memcache();
+$cache = new Memcache;
 $cache->addServer('localhost', 11211);
 
 $db->setCache($cache);
@@ -687,9 +695,9 @@ $key = 'top_users';
 $expire = 600;
 
 $users = $db->from('user')
-    ->sortDesc('score')
-    ->limit(100)
-    ->many($key, $expire);
+  ->sortDesc('score')
+  ->limit(100)
+  ->many($key, $expire);
 ```
 
 In the above example, we are getting a list of the top 100 highest scoring users and caching it for 600 seconds (10 minutes).
@@ -736,15 +744,15 @@ represent database fields and static variables to describe the database relation
 
 ```php
 class User {
-    // Class properties
-    public $id;
-    public $name;
-    public $email;
+  // Class properties
+  public $id;
+  public $name;
+  public $email;
 
-    // Class configuration
-    static $table = 'user';
-    static $id_field = 'id';
-    static $name_field = 'name';
+  // Class configuration
+  static $table = 'user';
+  static $id_field = 'id';
+  static $name_field = 'name';
 }
 ```
 
@@ -791,7 +799,7 @@ If you pass in an array Sparrow will use the fields specified in the array.
 
 ```php
 $user = $db->find(
-    array('email' => 'bob@aol.com')
+  array('email' => 'bob@aol.com')
 );
 ```
 
@@ -881,9 +889,9 @@ You can use the sql builder functions to further define criteria for loading obj
 
 ```php
 $db->using('User')
-    ->where('id >', 10)
-    ->sortAsc('name')
-    ->find();
+  ->where('id >', 10)
+  ->sortAsc('name')
+  ->find();
 ```
 
 This will execute:
@@ -896,8 +904,8 @@ You can also pass in raw SQL to load your objects.
 
 ```php
 $db->using('User')
-    ->sql('SELECT * FROM user WHERE id > 10')
-    ->find();
+  ->sql('SELECT * FROM user WHERE id > 10')
+  ->find();
 ```
 
 ## Statistics
@@ -924,36 +932,36 @@ array(6) {
     [0]=>
     array(4) {
       ["query"]=>
-          string(38) "SELECT * FROM user WHERE uid=1"
+        string(38) "SELECT * FROM user WHERE uid=1"
       ["time"]=>
-          float(0.00016617774963379)
+        float(0.00016617774963379)
       ["rows"]=>
-          int(1)
+        int(1)
       ["changes"]=>
-          int(0)
+        int(0)
     }
     [1]=>
     array(4) {
       ["query"]=>
-          string(39) "SELECT * FROM user WHERE uid=10"
+        string(39) "SELECT * FROM user WHERE uid=10"
       ["time"]=>
-          float(0.00026392936706543)
+        float(0.00026392936706543)
       ["rows"]=>
-          int(0)
+        int(0)
       ["changes"]=>
-          int(0)
+        int(0)
     }
   }
   ["total_time"]=>
-      float(0.00043010711669922)
+    float(0.00043010711669922)
   ["num_queries"]=>
-      int(2)
+    int(2)
   ["num_rows"]=>
-      int(2)
+    int(2)
   ["num_changes"]=>
-      int(0)
+    int(0)
   ["avg_query_time"]=>
-      float(0.00021505355834961)
+    float(0.00021505355834961)
 }
 ```
 
@@ -965,10 +973,6 @@ error message. If you want to display the generated SQL along with the error mes
 ```php
 $db->show_sql = true;
 ```
-
-## Requirements
-
-Sparrow requires PHP 5.1 or greater.
 
 ## License
 
